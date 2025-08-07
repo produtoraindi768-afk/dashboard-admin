@@ -1,4 +1,4 @@
-# StreamerHub Dashboard
+# SAFEzone Dashboard
 
 Um painel web completo para gerenciamento de streamers com funcionalidades modernas e design responsivo.
 

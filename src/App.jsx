@@ -6,6 +6,9 @@ import { Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import StreamerRegistration from './pages/StreamerRegistration';
+import TeamRegistration from './pages/TeamRegistration';
+
+import TournamentRegistration from './pages/TournamentRegistration';
 import StatusManagement from './pages/StatusManagement';
 import ApiPreview from './pages/ApiPreview';
 import FirebaseTest from './pages/FirebaseTest';
@@ -65,9 +68,9 @@ function App() {
                 </Button>
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary-foreground">S</span>
+                    <img src="/logo sz.svg" alt="SAFEzone Logo" className="h-4 w-4" />
                   </div>
-                  <span className="font-semibold">StreamerHub</span>
+                  <span className="font-semibold">SAFEzone</span>
                 </div>
               </div>
             </header>
@@ -81,6 +84,15 @@ function App() {
                   
                   {/* Cadastro de Streamers */}
                   <Route path="/cadastro" element={<StreamerRegistration />} />
+                  
+                  {/* Cadastro de Times */}
+                  <Route path="/times" element={<TeamRegistration />} />
+                  
+                  {/* Gerenciamento de Times */}
+    
+                  
+                  {/* Cadastro de Torneios */}
+                  <Route path="/torneios" element={<TournamentRegistration />} />
                   
                   {/* Gerenciamento de Status */}
                   <Route path="/status" element={<StatusManagement />} />
@@ -113,7 +125,7 @@ function App() {
               <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col sm:flex-row items-center justify-between text-sm text-muted-foreground">
                   <div className="flex items-center gap-4">
-                    <p>&copy; 2024 StreamerHub Dashboard</p>
+                    <p>&copy; 2024 SAFEzone Dashboard</p>
                     <span className="hidden sm:inline">•</span>
                     <p className="hidden sm:inline">Gerenciamento de Streamers</p>
                   </div>

@@ -11,15 +11,50 @@ export const useFirebaseStreamers = () => {
 
   // Carrega todos os streamers
   const loadStreamers = useCallback(async (filters = {}) => {
-    if (!isConfigured || !firestore) {
-      setLoading(false);
-      return;
-    }
-    
     setLoading(true);
     setError(null);
     
     try {
+      // Se Firebase não estiver configurado, usa dados locais
+      if (!isConfigured || !firestore) {
+        const localData = localStorage.getItem('streamers_data');
+        if (localData) {
+          const parsedData = JSON.parse(localData);
+          setStreamers(parsedData);
+        } else {
+          // Dados de exemplo se não houver dados locais
+          const exampleData = [
+            {
+              id: '1',
+              name: 'Exemplo Streamer 1',
+              platform: 'twitch',
+              streamUrl: 'https://twitch.tv/exemplo1',
+              avatarUrl: '',
+              category: 'games',
+              isOnline: true,
+              viewers: 1250,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            {
+              id: '2',
+              name: 'Exemplo Streamer 2',
+              platform: 'youtube',
+              streamUrl: 'https://youtube.com/@exemplo2',
+              avatarUrl: '',
+              category: 'music',
+              isOnline: false,
+              viewers: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ];
+          setStreamers(exampleData);
+        }
+        setLoading(false);
+        return;
+      }
+      
       const response = await firebaseStreamerAPI.getStreamers(filters);
       setStreamers(response.data);
     } catch (err) {
@@ -157,8 +192,16 @@ export const useFirebaseStreamers = () => {
 };
 
 export const useFirebaseStreamerStatistics = () => {
-  const [statistics, setStatistics] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const { isConfigured } = useFirebase();
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    online: 0,
+    offline: 0,
+    platforms: {},
+    categories: {},
+    totalViewers: 0
+  });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadStatistics = useCallback(async () => {
@@ -166,6 +209,42 @@ export const useFirebaseStreamerStatistics = () => {
     setError(null);
     
     try {
+      // Se Firebase não estiver configurado, calcula estatísticas dos dados locais
+      if (!isConfigured) {
+        const localData = localStorage.getItem('streamers_data');
+        if (localData) {
+          const streamers = JSON.parse(localData);
+          const stats = {
+            total: streamers.length,
+            online: streamers.filter(s => s.isOnline).length,
+            offline: streamers.filter(s => !s.isOnline).length,
+            platforms: {},
+            categories: {},
+            totalViewers: streamers.reduce((sum, s) => sum + (s.viewers || 0), 0)
+          };
+          
+          // Calcula estatísticas por plataforma
+          streamers.forEach(s => {
+            stats.platforms[s.platform] = (stats.platforms[s.platform] || 0) + 1;
+            stats.categories[s.category] = (stats.categories[s.category] || 0) + 1;
+          });
+          
+          setStatistics(stats);
+        } else {
+          // Estatísticas de exemplo
+          setStatistics({
+            total: 2,
+            online: 1,
+            offline: 1,
+            platforms: { twitch: 1, youtube: 1 },
+            categories: { games: 1, music: 1 },
+            totalViewers: 1250
+          });
+        }
+        setLoading(false);
+        return;
+      }
+      
       const response = await firebaseStreamerAPI.getStatistics();
       setStatistics(response.data);
     } catch (err) {
@@ -174,7 +253,7 @@ export const useFirebaseStreamerStatistics = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isConfigured]);
 
   useEffect(() => {
     loadStatistics();

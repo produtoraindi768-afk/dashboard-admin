@@ -95,6 +95,28 @@ class FirebaseStreamerService {
   // Obtém todos os streamers
   async getAllStreamers() {
     try {
+      if (!firestoreInstance) {
+        // Fallback para localStorage
+        const localData = localStorage.getItem('streamers');
+        if (localData) {
+          return JSON.parse(localData);
+        }
+        // Dados de exemplo se não houver dados locais
+        return [
+          {
+            id: '1',
+            name: 'Streamer Exemplo',
+            platform: 'Twitch',
+            streamUrl: 'https://twitch.tv/exemplo',
+            avatarUrl: '',
+            category: 'FPS',
+            isOnline: false,
+            createdAt: new Date().toISOString(),
+            lastStatusUpdate: new Date().toISOString()
+          }
+        ];
+      }
+      
       const collectionRef = this.getCollectionRef();
       const querySnapshot = await getDocs(query(collectionRef, orderBy('createdAt', 'desc')));
       return querySnapshot.docs.map(doc => ({
@@ -280,6 +302,26 @@ class FirebaseStreamerService {
   // Obtém estatísticas dos streamers
   async getStatistics() {
     try {
+      if (!firestoreInstance) {
+        // Fallback para localStorage
+        const localData = localStorage.getItem('streamers');
+        const streamers = localData ? JSON.parse(localData) : [];
+        
+        return {
+          total: streamers.length,
+          online: streamers.filter(s => s.isOnline).length,
+          offline: streamers.filter(s => !s.isOnline).length,
+          byPlatform: PLATFORMS.reduce((acc, platform) => {
+            acc[platform] = streamers.filter(s => s.platform === platform).length;
+            return acc;
+          }, {}),
+          byCategory: CATEGORIES.reduce((acc, category) => {
+            acc[category] = streamers.filter(s => s.category === category).length;
+            return acc;
+          }, {})
+        };
+      }
+      
       const streamers = await this.getAllStreamers();
       
       return {

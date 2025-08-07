@@ -47,6 +47,7 @@ const StreamerRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   // Limpa mensagens após um tempo
   React.useEffect(() => {
@@ -98,6 +99,7 @@ const StreamerRegistration = () => {
         avatarUrl: '',
         category: ''
       });
+      setShowForm(false);
     } catch (err) {
       setFormErrors({ submit: err.message });
     } finally {
@@ -116,6 +118,7 @@ const StreamerRegistration = () => {
     });
     setEditingId(streamer.id);
     setFormErrors({});
+    setShowForm(true);
   };
 
   // Cancela edição
@@ -129,6 +132,7 @@ const StreamerRegistration = () => {
     });
     setEditingId(null);
     setFormErrors({});
+    setShowForm(false);
   };
 
   // Remove streamer
@@ -146,11 +150,17 @@ const StreamerRegistration = () => {
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cadastro de Streamers</h1>
-        <p className="text-muted-foreground">
-          Gerencie os streamers cadastrados no sistema
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Gerenciar Streamers</h1>
+          <p className="text-muted-foreground">
+            Cadastre e gerencie streamers do sistema
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)}>
+          <Plus className="mr-2 h-4 w-4" />
+          {showForm ? 'Cancelar' : 'Novo Streamer'}
+        </Button>
       </div>
 
       {/* Mensagens de sucesso e erro */}
@@ -171,7 +181,8 @@ const StreamerRegistration = () => {
       )}
 
       {/* Formulário de Cadastro */}
-      <Card>
+      {showForm && (
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -304,6 +315,7 @@ const StreamerRegistration = () => {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Lista de Streamers */}
       <Card>
