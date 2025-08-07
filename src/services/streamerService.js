@@ -10,6 +10,7 @@ export const createStreamer = (data) => ({
   avatarUrl: data.avatarUrl || '',
   category: data.category || '',
   isOnline: false,
+  isFeatured: false,
   createdAt: new Date().toISOString(),
   lastStatusUpdate: new Date().toISOString(),
   ...data

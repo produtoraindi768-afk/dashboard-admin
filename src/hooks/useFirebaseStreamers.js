@@ -32,6 +32,7 @@ export const useFirebaseStreamers = () => {
               avatarUrl: '',
               category: 'games',
               isOnline: true,
+              isFeatured: true,
               viewers: 1250,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
@@ -44,6 +45,7 @@ export const useFirebaseStreamers = () => {
               avatarUrl: '',
               category: 'music',
               isOnline: false,
+              isFeatured: false,
               viewers: 0,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()

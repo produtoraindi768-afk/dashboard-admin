@@ -47,6 +47,7 @@ export const createStreamer = (data) => ({
   avatarUrl: data.avatarUrl || '',
   category: data.category || '',
   isOnline: false,
+  isFeatured: false,
   createdAt: serverTimestamp(),
   lastStatusUpdate: serverTimestamp(),
   ...data

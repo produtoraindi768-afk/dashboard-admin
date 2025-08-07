@@ -11,7 +11,8 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Activity
+  Activity,
+  Star
 } from 'lucide-react';
 import { useFirebaseStreamers } from '../hooks/useFirebaseStreamers';
 import {
@@ -22,7 +23,7 @@ import {
 } from '../utils/formatters';
 
 const StatusManagement = () => {
-  const { streamers, loading, error, updateStreamerStatus, refreshStreamers, toggleRealTime } = useFirebaseStreamers();
+  const { streamers, loading, error, updateStreamer, updateStreamerStatus, refreshStreamers, toggleRealTime } = useFirebaseStreamers();
 
   // Ativa tempo real automaticamente quando o componente monta
   React.useEffect(() => {
@@ -50,11 +51,24 @@ const StatusManagement = () => {
     }
   };
 
+  const handleFeaturedChange = async (streamerId, isFeatured) => {
+    setIsUpdating(prev => ({ ...prev, [`${streamerId}_featured`]: true }));
+    try {
+      await updateStreamer(streamerId, { isFeatured });
+      setSuccessMessage(`Destaque ${isFeatured ? 'ativado' : 'desativado'}`);
+    } catch (err) {
+      console.error('Erro ao atualizar destaque:', err);
+    } finally {
+      setIsUpdating(prev => ({ ...prev, [`${streamerId}_featured`]: false }));
+    }
+  };
+
   const stats = useMemo(() => {
     const total = streamers.length;
     const online = streamers.filter(s => s.isOnline).length;
     const offline = total - online;
-    return { total, online, offline };
+    const featured = streamers.filter(s => s.isFeatured).length;
+    return { total, online, offline, featured };
   }, [streamers]);
 
   return (
@@ -82,7 +96,7 @@ const StatusManagement = () => {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -128,6 +142,18 @@ const StatusManagement = () => {
                 <p className="text-2xl font-bold text-blue-600">
                   {stats.total > 0 ? Math.round((stats.online / stats.total) * 100) : 0}%
                 </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Star className="h-4 w-4 text-yellow-600" />
+              <div className="ml-2">
+                <p className="text-sm font-medium text-muted-foreground">Em Destaque</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.featured}</p>
               </div>
             </div>
           </CardContent>
@@ -196,14 +222,29 @@ const StatusManagement = () => {
                             </div>
                             
                             <div className="flex items-center gap-2">
-                              {isUpdatingStatus && (
+                              {isUpdating[streamer.id] && (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               )}
                               <Switch
                                 checked={streamer.isOnline}
                                 onCheckedChange={(checked) => handleStatusChange(streamer.id, checked)}
-                                disabled={isUpdatingStatus}
+                                disabled={isUpdating[streamer.id]}
                               />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={streamer.isFeatured || false}
+                                onCheckedChange={(checked) => handleFeaturedChange(streamer.id, checked)}
+                                disabled={isUpdating[`${streamer.id}_featured`]}
+                              />
+                              <Star className={`h-4 w-4 ${streamer.isFeatured ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}`} />
+                              <span className="text-sm font-medium">
+                                Destaque
+                              </span>
+                              {isUpdating[`${streamer.id}_featured`] && (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              )}
                             </div>
 
                             <Button
