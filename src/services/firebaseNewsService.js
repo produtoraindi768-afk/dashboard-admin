@@ -141,6 +141,8 @@ export class FirebaseNewsService {
         seoTitle: newsData.seoTitle || newsData.title.trim(),
         seoDescription: newsData.seoDescription || newsData.content.trim().substring(0, 160),
         readingTime: Math.ceil(newsData.content.trim().split(' ').length / 200), // Estimativa de tempo de leitura
+        isFeatured: newsData.isFeatured || false,
+        bannerUrl: newsData.bannerUrl || '',
         createdAt: now,
         updatedAt: now
       };
@@ -207,6 +209,8 @@ export class FirebaseNewsService {
         seoTitle: newsData.seoTitle || newsData.title.trim(),
         seoDescription: newsData.seoDescription || newsData.content.trim().substring(0, 160),
         readingTime: Math.ceil(newsData.content.trim().split(' ').length / 200),
+        isFeatured: newsData.isFeatured || false,
+        bannerUrl: newsData.bannerUrl || '',
         updatedAt: serverTimestamp()
       };
       
@@ -359,6 +363,47 @@ export class FirebaseNewsService {
    */
   static async getPublishedNews() {
     return this.getNewsByStatus('published');
+  }
+  
+  /**
+   * Obtém notícias em destaque
+   * @returns {Promise<Object>} Lista de notícias em destaque
+   */
+  static async getFeaturedNews() {
+    try {
+      const newsCollection = collection(db, COLLECTION_NAME);
+      const newsQuery = query(
+        newsCollection,
+        where('isFeatured', '==', true),
+        where('status', '==', 'published'),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(newsQuery);
+      const news = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        news.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+          publishDate: data.publishDate || new Date().toISOString().split('T')[0]
+        });
+      });
+      
+      return {
+        success: true,
+        data: news
+      };
+    } catch (error) {
+      console.error('Erro ao buscar notícias em destaque:', error);
+      return {
+        success: false,
+        error: 'Erro ao carregar notícias em destaque'
+      };
+    }
   }
   
   /**

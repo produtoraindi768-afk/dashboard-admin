@@ -22,7 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Loader2
+  Loader2,
+  Star
 } from 'lucide-react';
 import { useNews } from '../hooks/useNews';
 import { formatDate } from '../utils/formatters';
@@ -58,7 +59,9 @@ const NewsPage = () => {
     seoDescription: '',
     readingTime: 5,
     status: 'draft',
-    publishDate: new Date().toISOString().split('T')[0]
+    publishDate: new Date().toISOString().split('T')[0],
+    isFeatured: false,
+    bannerUrl: ''
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -88,7 +91,9 @@ const NewsPage = () => {
       seoDescription: '',
       readingTime: 5,
       status: 'draft',
-      publishDate: new Date().toISOString().split('T')[0]
+      publishDate: new Date().toISOString().split('T')[0],
+      isFeatured: false,
+      bannerUrl: ''
     });
     setEditingNews(null);
     setFormError('');
@@ -116,7 +121,9 @@ const NewsPage = () => {
       seoDescription: newsItem.seoDescription || '',
       readingTime: newsItem.readingTime || 5,
       status: newsItem.status,
-      publishDate: newsItem.publishDate
+      publishDate: newsItem.publishDate,
+      isFeatured: newsItem.isFeatured || false,
+      bannerUrl: newsItem.bannerUrl || ''
     });
     setEditingNews(newsItem);
     setFormError('');
@@ -386,7 +393,12 @@ const NewsPage = () => {
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <CardTitle className="text-lg line-clamp-2">{newsItem.title}</CardTitle>
+                      <CardTitle className="text-lg line-clamp-2 flex items-center gap-2">
+                        {newsItem.title}
+                        {newsItem.isFeatured && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" title="Notícia em destaque" />
+                        )}
+                      </CardTitle>
                       <Badge 
                         variant="outline" 
                         className={`${getStatusColor(newsItem.status)} flex items-center gap-1 shrink-0`}
@@ -622,6 +634,44 @@ const NewsPage = () => {
               </div>
             </div>
             
+            {/* Campos de Destaque */}
+            <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-600" />
+                <Label className="text-sm font-medium text-yellow-800">Configurações de Destaque</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="isFeatured"
+                  checked={formData.isFeatured}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                  className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                />
+                <Label htmlFor="isFeatured" className="text-sm">
+                  Marcar como notícia destaque
+                </Label>
+              </div>
+              
+              {formData.isFeatured && (
+                <div className="space-y-2">
+                  <Label htmlFor="bannerUrl">URL do Banner de Destaque</Label>
+                  <Input
+                    id="bannerUrl"
+                    type="url"
+                    value={formData.bannerUrl}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bannerUrl: e.target.value }))}
+                    placeholder="https://exemplo.com/banner-destaque.jpg"
+                    className="bg-white"
+                  />
+                  <p className="text-xs text-yellow-700">
+                    Banner especial que será exibido quando esta notícia estiver em destaque
+                  </p>
+                </div>
+              )}
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="contentHtml">Conteúdo HTML (para estilização no portal)</Label>
               <Textarea
@@ -703,7 +753,12 @@ const NewsPage = () => {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-2 mb-2">
-                  <DialogTitle className="text-xl">{viewingNews.title}</DialogTitle>
+                  <DialogTitle className="text-xl flex items-center gap-2">
+                    {viewingNews.title}
+                    {viewingNews.isFeatured && (
+                      <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" title="Notícia em destaque" />
+                    )}
+                  </DialogTitle>
                   <Badge 
                     variant="outline" 
                     className={`${getStatusColor(viewingNews.status)} flex items-center gap-1`}
@@ -725,6 +780,23 @@ const NewsPage = () => {
               </DialogHeader>
               
               <div className="space-y-4">
+                {viewingNews.isFeatured && viewingNews.bannerUrl && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-yellow-700">Banner de Destaque:</span>
+                    </div>
+                    <img 
+                      src={viewingNews.bannerUrl} 
+                      alt={`Banner de destaque - ${viewingNews.title}`}
+                      className="w-full h-32 object-cover rounded-md border-2 border-yellow-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
                 {viewingNews.featuredImage && (
                   <img 
                     src={viewingNews.featuredImage} 

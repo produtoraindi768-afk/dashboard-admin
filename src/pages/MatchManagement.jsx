@@ -62,7 +62,12 @@ const MatchManagement = () => {
     scheduledDate: '',
     format: 'MD3',
     game: 'League of Legends',
-    isFeatured: false
+    isFeatured: false,
+    // Campos de resultado MD3/MD5
+    team1ScoreMD3: 0,
+    team2ScoreMD3: 0,
+    team1ScoreMD5: 0,
+    team2ScoreMD5: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -76,7 +81,12 @@ const MatchManagement = () => {
     format: 'MD3',
     game: 'League of Legends',
     maps: [],
-    isFeatured: false
+    isFeatured: false,
+    // Campos de resultado MD3/MD5
+    team1ScoreMD3: 0,
+    team2ScoreMD3: 0,
+    team1ScoreMD5: 0,
+    team2ScoreMD5: 0
   });
 
   const [matchResult, setMatchResult] = useState({
@@ -184,6 +194,19 @@ const MatchManagement = () => {
           team1Score: 0,
           team2Score: 0,
           winner: null
+        },
+        // Resultados MD3/MD5
+        resultMD3: {
+          team1Score: newMatch.team1ScoreMD3 || 0,
+          team2Score: newMatch.team2ScoreMD3 || 0,
+          winner: newMatch.team1ScoreMD3 > newMatch.team2ScoreMD3 ? 'team1' : 
+                  newMatch.team2ScoreMD3 > newMatch.team1ScoreMD3 ? 'team2' : null
+        },
+        resultMD5: {
+          team1Score: newMatch.team1ScoreMD5 || 0,
+          team2Score: newMatch.team2ScoreMD5 || 0,
+          winner: newMatch.team1ScoreMD5 > newMatch.team2ScoreMD5 ? 'team1' : 
+                  newMatch.team2ScoreMD5 > newMatch.team1ScoreMD5 ? 'team2' : null
         }
       };
 
@@ -198,7 +221,11 @@ const MatchManagement = () => {
         format: 'MD3',
         game: 'League of Legends',
         maps: [],
-        isFeatured: false
+        isFeatured: false,
+        team1ScoreMD3: 0,
+        team2ScoreMD3: 0,
+        team1ScoreMD5: 0,
+        team2ScoreMD5: 0
       });
     } catch (err) {
       console.error('Erro ao criar partida:', err);
@@ -210,7 +237,29 @@ const MatchManagement = () => {
 
   const handleUpdateResult = async () => {
     try {
-      await updateMatchResult(selectedMatch.id, matchResult);
+      // Criar objeto de resultado com campos MD3/MD5
+      const resultData = {
+        ...matchResult,
+        // Adicionar resultados MD3/MD5 se existirem
+        ...(selectedMatch?.format === 'MD3' && {
+          resultMD3: {
+            team1Score: matchResult.team1ScoreMD3 || 0,
+            team2Score: matchResult.team2ScoreMD3 || 0,
+            winner: matchResult.team1ScoreMD3 > matchResult.team2ScoreMD3 ? 'team1' : 
+                    matchResult.team2ScoreMD3 > matchResult.team1ScoreMD3 ? 'team2' : null
+          }
+        }),
+        ...(selectedMatch?.format === 'MD5' && {
+          resultMD5: {
+            team1Score: matchResult.team1ScoreMD5 || 0,
+            team2Score: matchResult.team2ScoreMD5 || 0,
+            winner: matchResult.team1ScoreMD5 > matchResult.team2ScoreMD5 ? 'team1' : 
+                    matchResult.team2ScoreMD5 > matchResult.team1ScoreMD5 ? 'team2' : null
+          }
+        })
+      };
+      
+      await updateMatchResult(selectedMatch.id, resultData);
       setSuccessMessage('Resultado atualizado com sucesso!');
       setIsResultDialogOpen(false);
       setSelectedMatch(null);
@@ -218,7 +267,11 @@ const MatchManagement = () => {
         team1Score: 0,
         team2Score: 0,
         winner: null,
-        maps: []
+        maps: [],
+        team1ScoreMD3: 0,
+        team2ScoreMD3: 0,
+        team1ScoreMD5: 0,
+        team2ScoreMD5: 0
       });
     } catch (err) {
       console.error('Erro ao atualizar resultado:', err);
@@ -283,6 +336,19 @@ const MatchManagement = () => {
           name: team2.name,
           logo: team2.logo || null,
           avatar: team2.avatar || null
+        },
+        // Resultados MD3/MD5
+        resultMD3: {
+          team1Score: editMatch.team1ScoreMD3 || 0,
+          team2Score: editMatch.team2ScoreMD3 || 0,
+          winner: editMatch.team1ScoreMD3 > editMatch.team2ScoreMD3 ? 'team1' : 
+                  editMatch.team2ScoreMD3 > editMatch.team1ScoreMD3 ? 'team2' : null
+        },
+        resultMD5: {
+          team1Score: editMatch.team1ScoreMD5 || 0,
+          team2Score: editMatch.team2ScoreMD5 || 0,
+          winner: editMatch.team1ScoreMD5 > editMatch.team2ScoreMD5 ? 'team1' : 
+                  editMatch.team2ScoreMD5 > editMatch.team1ScoreMD5 ? 'team2' : null
         }
       };
 
@@ -307,7 +373,11 @@ const MatchManagement = () => {
       scheduledDate: match.scheduledDate ? new Date(match.scheduledDate).toISOString().slice(0, 16) : '',
       format: match.format || 'MD3',
       game: match.game || 'League of Legends',
-      isFeatured: match.isFeatured || false
+      isFeatured: match.isFeatured || false,
+      team1ScoreMD3: match.resultMD3?.team1Score || 0,
+      team2ScoreMD3: match.resultMD3?.team2Score || 0,
+      team1ScoreMD5: match.resultMD5?.team1Score || 0,
+      team2ScoreMD5: match.resultMD5?.team2Score || 0
     });
     setFormError('');
     setIsEditDialogOpen(true);
@@ -330,7 +400,11 @@ const MatchManagement = () => {
       team1Score: match.result?.team1Score || 0,
       team2Score: match.result?.team2Score || 0,
       winner: match.result?.winner || null,
-      maps: match.maps || []
+      maps: match.maps || [],
+      team1ScoreMD3: match.resultMD3?.team1Score || 0,
+      team2ScoreMD3: match.resultMD3?.team2Score || 0,
+      team1ScoreMD5: match.resultMD5?.team1Score || 0,
+      team2ScoreMD5: match.resultMD5?.team2Score || 0
     });
     setIsResultDialogOpen(true);
   };
@@ -587,6 +661,73 @@ const MatchManagement = () => {
                     <SelectItem value="PUBG">PUBG</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              
+              {/* Campos de Resultado MD3/MD5 */}
+              <div className="space-y-4 border-t pt-4">
+                <Label className="text-sm font-medium">Resultado da Partida (Opcional)</Label>
+                
+                {/* Resultado MD3 */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Resultado MD3 (Melhor de 3)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="team1ScoreMD3" className="text-xs">Time 1</Label>
+                      <Input
+                        id="team1ScoreMD3"
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={newMatch.team1ScoreMD3}
+                        onChange={(e) => setNewMatch(prev => ({ ...prev, team1ScoreMD3: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="team2ScoreMD3" className="text-xs">Time 2</Label>
+                      <Input
+                        id="team2ScoreMD3"
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={newMatch.team2ScoreMD3}
+                        onChange={(e) => setNewMatch(prev => ({ ...prev, team2ScoreMD3: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Resultado MD5 */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Resultado MD5 (Melhor de 5)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="team1ScoreMD5" className="text-xs">Time 1</Label>
+                      <Input
+                        id="team1ScoreMD5"
+                        type="number"
+                        min="0"
+                        max="5"
+                        value={newMatch.team1ScoreMD5}
+                        onChange={(e) => setNewMatch(prev => ({ ...prev, team1ScoreMD5: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="team2ScoreMD5" className="text-xs">Time 2</Label>
+                      <Input
+                        id="team2ScoreMD5"
+                        type="number"
+                        min="0"
+                        max="5"
+                        value={newMatch.team2ScoreMD5}
+                        onChange={(e) => setNewMatch(prev => ({ ...prev, team2ScoreMD5: parseInt(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <div className="flex items-center space-x-2">
@@ -908,6 +1049,51 @@ const MatchManagement = () => {
               </div>
             </div>
             
+            {/* Campos de Resultado MD3/MD5 */}
+            {(selectedMatch?.format === 'MD3' || selectedMatch?.format === 'MD5') && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="text-sm font-medium">Resultado {selectedMatch?.format}</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Pontuação {selectedMatch?.team1?.name} ({selectedMatch?.format})</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={selectedMatch?.format === 'MD3' ? "3" : "5"}
+                      value={selectedMatch?.format === 'MD3' ? matchResult.team1ScoreMD3 : matchResult.team1ScoreMD5}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        if (selectedMatch?.format === 'MD3') {
+                          setMatchResult(prev => ({ ...prev, team1ScoreMD3: value }));
+                        } else {
+                          setMatchResult(prev => ({ ...prev, team1ScoreMD5: value }));
+                        }
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Pontuação {selectedMatch?.team2?.name} ({selectedMatch?.format})</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={selectedMatch?.format === 'MD3' ? "3" : "5"}
+                      value={selectedMatch?.format === 'MD3' ? matchResult.team2ScoreMD3 : matchResult.team2ScoreMD5}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        if (selectedMatch?.format === 'MD3') {
+                          setMatchResult(prev => ({ ...prev, team2ScoreMD3: value }));
+                        } else {
+                          setMatchResult(prev => ({ ...prev, team2ScoreMD5: value }));
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <Label>Vencedor</Label>
               <Select value={matchResult.winner || ''} onValueChange={(value) => setMatchResult(prev => ({ ...prev, winner: value || null }))}>
@@ -1152,6 +1338,51 @@ const MatchManagement = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            {/* Campos de Resultado MD3/MD5 */}
+            {(editMatch.format === 'MD3' || editMatch.format === 'MD5') && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="text-sm font-medium">Resultado {editMatch.format}</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Pontuação Time 1 ({editMatch.format})</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={editMatch.format === 'MD3' ? "3" : "5"}
+                      value={editMatch.format === 'MD3' ? editMatch.team1ScoreMD3 : editMatch.team1ScoreMD5}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        if (editMatch.format === 'MD3') {
+                          setEditMatch(prev => ({ ...prev, team1ScoreMD3: value }));
+                        } else {
+                          setEditMatch(prev => ({ ...prev, team1ScoreMD5: value }));
+                        }
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Pontuação Time 2 ({editMatch.format})</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={editMatch.format === 'MD3' ? "3" : "5"}
+                      value={editMatch.format === 'MD3' ? editMatch.team2ScoreMD3 : editMatch.team2ScoreMD5}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 0;
+                        if (editMatch.format === 'MD3') {
+                          setEditMatch(prev => ({ ...prev, team2ScoreMD3: value }));
+                        } else {
+                          setEditMatch(prev => ({ ...prev, team2ScoreMD5: value }));
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="flex items-center space-x-2">
               <Switch
