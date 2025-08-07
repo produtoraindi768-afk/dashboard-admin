@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { useTheme } from '../contexts/ThemeContext';
 import { 
   Users, 
   Activity, 
@@ -14,7 +15,10 @@ import {
   Settings,
   HelpCircle,
   Shield,
-  Trophy
+  Trophy,
+  Newspaper,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useFirebaseStreamers, useFirebaseStreamerStatistics } from '../hooks/useFirebaseStreamers';
 import { useFirebaseTeams } from '../hooks/useFirebaseTeams';
@@ -23,6 +27,7 @@ import useFirebaseTeamStatistics from '../hooks/useFirebaseTeamStatistics';
 
 const Sidebar = ({ isOpen, onToggle, className = '' }) => {
   const location = useLocation();
+  const { theme, toggleTheme, isDark } = useTheme();
   
   const { streamers } = useFirebaseStreamers();
   const { statistics } = useFirebaseStreamerStatistics();
@@ -65,6 +70,12 @@ const Sidebar = ({ isOpen, onToggle, className = '' }) => {
       description: 'Controlar online/offline',
       badge: statistics?.online || 0,
       badgeVariant: 'default'
+    },
+    {
+      title: 'Notícias',
+      href: '/noticias',
+      icon: Newspaper,
+      description: 'Gerenciar notícias'
     },
     {
       title: 'API Preview',
@@ -214,11 +225,21 @@ const Sidebar = ({ isOpen, onToggle, className = '' }) => {
 
           {/* Footer */}
           <div className="border-t p-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span>Sistema Online</span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                <span>Sistema Online</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="h-8 w-8 p-0"
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground">
               {streamers.length} streamers • {statistics?.online || 0} online
             </p>
           </div>

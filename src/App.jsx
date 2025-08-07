@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { FirebaseProvider } from './contexts/FirebaseContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, Sun, Moon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import StreamerRegistration from './pages/StreamerRegistration';
@@ -12,6 +13,7 @@ import TournamentRegistration from './pages/TournamentRegistration';
 import StatusManagement from './pages/StatusManagement';
 import ApiPreview from './pages/ApiPreview';
 import FirebaseTest from './pages/FirebaseTest';
+import NewsPage from './pages/NewsPage';
 import './App.css';
 
 // Componente de página não encontrada
@@ -36,8 +38,10 @@ const ComingSoon = ({ title }) => (
   </div>
 );
 
-function App() {
+// Componente interno que usa o hook useTheme
+const AppContent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { theme, toggleTheme, isDark } = useTheme();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -71,6 +75,14 @@ function App() {
                     <img src="/logo sz.svg" alt="SAFEzone Logo" className="h-4 w-4" />
                   </div>
                   <span className="font-semibold">SAFEzone</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleTheme}
+                    className="ml-2"
+                  >
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             </header>
@@ -99,6 +111,9 @@ function App() {
                   
                   {/* API Preview */}
                   <Route path="/api" element={<ApiPreview />} />
+                  
+                  {/* Notícias */}
+                  <Route path="/noticias" element={<NewsPage />} />
                   
                   {/* Páginas em desenvolvimento */}
                   <Route 
@@ -147,6 +162,15 @@ function App() {
         </div>
       </Router>
     </FirebaseProvider>
+  );
+};
+
+// Componente principal App com ThemeProvider
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 
