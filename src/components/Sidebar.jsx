@@ -18,11 +18,13 @@ import {
   Trophy,
   Newspaper,
   Sun,
-  Moon
+  Moon,
+  Swords
 } from 'lucide-react';
 import { useFirebaseStreamers, useFirebaseStreamerStatistics } from '../hooks/useFirebaseStreamers';
 import { useFirebaseTeams } from '../hooks/useFirebaseTeams';
 import { useFirebaseTournaments } from '../hooks/useFirebaseTournaments';
+import { useFirebaseMatches } from '../hooks/useFirebaseMatches';
 import useFirebaseTeamStatistics from '../hooks/useFirebaseTeamStatistics';
 
 const Sidebar = ({ isOpen, onToggle, className = '' }) => {
@@ -33,6 +35,7 @@ const Sidebar = ({ isOpen, onToggle, className = '' }) => {
   const { statistics } = useFirebaseStreamerStatistics();
   const { teams } = useFirebaseTeams();
   const { tournaments } = useFirebaseTournaments();
+  const { matches, statistics: matchStatistics } = useFirebaseMatches();
   const { statistics: teamStatistics } = useFirebaseTeamStatistics();
 
   const navigationItems = [
@@ -70,6 +73,14 @@ const Sidebar = ({ isOpen, onToggle, className = '' }) => {
       description: 'Controlar online/offline',
       badge: statistics?.online || 0,
       badgeVariant: 'default'
+    },
+    {
+      title: 'Partidas',
+      href: '/partidas',
+      icon: Swords,
+      description: 'Gerenciar confrontos',
+      badge: matchStatistics?.live || 0,
+      badgeVariant: 'destructive'
     },
     {
       title: 'Notícias',

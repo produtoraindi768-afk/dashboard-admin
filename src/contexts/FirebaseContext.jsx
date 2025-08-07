@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { app, db, auth } from '../config/firebase';
 import { setFirestoreInstance as setStreamerFirestore, firebaseStreamerService } from '../services/firebaseStreamerService';
 import { setFirestoreInstance as setTeamFirestore, firebaseTeamService } from '../services/firebaseTeamService';
+import { getFirebaseMatchService } from '../services/firebaseMatchService';
 
 const FirebaseContext = createContext();
 
@@ -23,11 +24,15 @@ export const FirebaseProvider = ({ children }) => {
   // Inicializa o serviço Firebase ao carregar
   useEffect(() => {
     try {
-      // Inicializa ambos os serviços
+      // Inicializa todos os serviços
       setStreamerFirestore(db);
       setTeamFirestore(db);
       firebaseStreamerService.initialize(db);
       firebaseTeamService.initialize(db);
+      
+      // Inicializa o serviço de partidas
+      getFirebaseMatchService(db);
+      
       console.log('Firebase inicializado com sucesso');
     } catch (err) {
       console.error('Erro ao inicializar Firebase:', err);

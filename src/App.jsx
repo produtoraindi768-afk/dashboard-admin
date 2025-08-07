@@ -11,6 +11,7 @@ import TeamRegistration from './pages/TeamRegistration';
 
 import TournamentRegistration from './pages/TournamentRegistration';
 import StatusManagement from './pages/StatusManagement';
+import MatchManagement from './pages/MatchManagement';
 import ApiPreview from './pages/ApiPreview';
 import FirebaseTest from './pages/FirebaseTest';
 import NewsPage from './pages/NewsPage';
@@ -108,6 +109,9 @@ const AppContent = () => {
                   
                   {/* Gerenciamento de Status */}
                   <Route path="/status" element={<StatusManagement />} />
+                  
+                  {/* Gerenciamento de Partidas */}
+                  <Route path="/partidas" element={<MatchManagement />} />
                   
                   {/* API Preview */}
                   <Route path="/api" element={<ApiPreview />} />
