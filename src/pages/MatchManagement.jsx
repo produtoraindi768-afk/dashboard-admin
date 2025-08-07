@@ -169,12 +169,14 @@ const MatchManagement = () => {
         team1: {
           id: team1.id,
           name: team1.name,
-          logo: team1.logo || null
+          logo: team1.logo || null,
+          avatar: team1.avatar || null
         },
         team2: {
           id: team2.id,
           name: team2.name,
-          logo: team2.logo || null
+          logo: team2.logo || null,
+          avatar: team2.avatar || null
         },
         maps,
         status: 'scheduled',
@@ -273,12 +275,14 @@ const MatchManagement = () => {
         team1: {
           id: team1.id,
           name: team1.name,
-          logo: team1.logo || null
+          logo: team1.logo || null,
+          avatar: team1.avatar || null
         },
         team2: {
           id: team2.id,
           name: team2.name,
-          logo: team2.logo || null
+          logo: team2.logo || null,
+          avatar: team2.avatar || null
         }
       };
 
@@ -480,11 +484,22 @@ const MatchManagement = () => {
                         Nenhum time disponível
                       </SelectItem>
                     ) : (
-                      teams.filter(team => team.id !== newMatch.team2Id).map(team => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
-                      ))
+                      teams.filter(team => team.id !== newMatch.team2Id).map(team => {
+                        const defaultAvatar = generateDefaultAvatar(team.name);
+                        return (
+                          <SelectItem key={team.id} value={team.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={team.avatar} alt={team.name} />
+                                <AvatarFallback className={`${defaultAvatar.bgColor} ${defaultAvatar.textColor} text-xs`}>
+                                  {defaultAvatar.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>
@@ -502,11 +517,22 @@ const MatchManagement = () => {
                         Nenhum time disponível
                       </SelectItem>
                     ) : (
-                      teams.filter(team => team.id !== newMatch.team1Id).map(team => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
-                      ))
+                      teams.filter(team => team.id !== newMatch.team1Id).map(team => {
+                        const defaultAvatar = generateDefaultAvatar(team.name);
+                        return (
+                          <SelectItem key={team.id} value={team.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={team.avatar} alt={team.name} />
+                                <AvatarFallback className={`${defaultAvatar.bgColor} ${defaultAvatar.textColor} text-xs`}>
+                                  {defaultAvatar.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>
@@ -740,9 +766,9 @@ const MatchManagement = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={match.team1?.logo} />
-                            <AvatarFallback>
-                              {match.team1?.name?.substring(0, 2).toUpperCase()}
+                            <AvatarImage src={match.team1?.avatar || match.team1?.logo} alt={match.team1?.name} />
+                            <AvatarFallback className={`${generateDefaultAvatar(match.team1?.name || '').bgColor} ${generateDefaultAvatar(match.team1?.name || '').textColor} text-xs`}>
+                              {generateDefaultAvatar(match.team1?.name || '').initials}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{match.team1?.name}</span>
@@ -752,9 +778,9 @@ const MatchManagement = () => {
                         
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={match.team2?.logo} />
-                            <AvatarFallback>
-                              {match.team2?.name?.substring(0, 2).toUpperCase()}
+                            <AvatarImage src={match.team2?.avatar || match.team2?.logo} alt={match.team2?.name} />
+                            <AvatarFallback className={`${generateDefaultAvatar(match.team2?.name || '').bgColor} ${generateDefaultAvatar(match.team2?.name || '').textColor} text-xs`}>
+                              {generateDefaultAvatar(match.team2?.name || '').initials}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{match.team2?.name}</span>
@@ -1023,11 +1049,22 @@ const MatchManagement = () => {
                       Nenhum time disponível
                     </SelectItem>
                   ) : (
-                    teams.filter(team => team.id !== editMatch.team2Id).map(team => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))
+                    teams.filter(team => team.id !== editMatch.team2Id).map(team => {
+                        const defaultAvatar = generateDefaultAvatar(team.name);
+                        return (
+                          <SelectItem key={team.id} value={team.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={team.avatar} alt={team.name} />
+                                <AvatarFallback className={`${defaultAvatar.bgColor} ${defaultAvatar.textColor} text-xs`}>
+                                  {defaultAvatar.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                   )}
                 </SelectContent>
               </Select>
@@ -1045,11 +1082,22 @@ const MatchManagement = () => {
                       Nenhum time disponível
                     </SelectItem>
                   ) : (
-                    teams.filter(team => team.id !== editMatch.team1Id).map(team => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))
+                    teams.filter(team => team.id !== editMatch.team1Id).map(team => {
+                        const defaultAvatar = generateDefaultAvatar(team.name);
+                        return (
+                          <SelectItem key={team.id} value={team.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={team.avatar} alt={team.name} />
+                                <AvatarFallback className={`${defaultAvatar.bgColor} ${defaultAvatar.textColor} text-xs`}>
+                                  {defaultAvatar.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                   )}
                 </SelectContent>
               </Select>
