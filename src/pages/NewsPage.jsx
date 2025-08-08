@@ -74,6 +74,7 @@ const NewsPage = () => {
   // Estados de visualização
   const [viewingNews, setViewingNews] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Resetar formulário
   const resetForm = useCallback(() => {
@@ -731,6 +732,16 @@ const NewsPage = () => {
               >
                 Cancelar
               </Button>
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={() => setPreviewOpen(true)}
+                disabled={!formData.title || !formData.content}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Pré-visualizar
+              </Button>
               <Button type="submit" disabled={formLoading}>
                 {formLoading ? (
                   <>
@@ -841,6 +852,167 @@ const NewsPage = () => {
               onClick={() => handleDelete(deleteConfirm.id)}
             >
               Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Pré-visualização */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Pré-visualização do Card
+            </DialogTitle>
+            <DialogDescription>
+              Veja como sua notícia aparecerá no portal com o conteúdo HTML formatado
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Preview do Card na Listagem */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Card na Listagem:</h3>
+              <Card className="w-full">
+                <CardHeader>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        {formData.title || 'Título da notícia'}
+                        {formData.isFeatured && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" title="Notícia em destaque" />
+                        )}
+                      </CardTitle>
+                      <Badge 
+                        variant="outline" 
+                        className={`${formData.status === 'published' ? 'border-green-200 bg-green-50 text-green-700' : 'border-yellow-200 bg-yellow-50 text-yellow-700'} flex items-center gap-1 shrink-0 w-fit mt-2`}
+                      >
+                        {formData.status === 'published' ? (
+                          <>
+                            <CheckCircle className="h-3 w-3" />
+                            Publicada
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-3 w-3" />
+                            Rascunho
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardDescription className="flex items-center gap-4 text-sm">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(formData.publishDate).toLocaleDateString('pt-BR')}
+                    </span>
+                    {formData.author && (
+                      <span className="flex items-center gap-1">
+                        por {formData.author}
+                      </span>
+                    )}
+                    {formData.category && (
+                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        {formData.category}
+                      </span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {formData.featuredImage && (
+                    <img 
+                      src={formData.featuredImage} 
+                      alt={formData.title}
+                      className="w-full h-48 object-cover rounded-md mb-3"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  
+                  <p className="text-muted-foreground line-clamp-3 mb-3">
+                    {formData.excerpt || formData.content || 'Conteúdo da notícia aparecerá aqui...'}
+                  </p>
+                  
+                  {formData.tags && formData.tags.length > 0 && (
+                    <div className="mb-3">
+                      {formData.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded mr-1 mb-1">
+                          #{tag}
+                        </span>
+                      ))}
+                      {formData.tags.length > 3 && (
+                        <span className="text-xs text-gray-500">+{formData.tags.length - 3} mais</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {formData.readingTime && (
+                    <div className="text-xs text-muted-foreground">
+                      {formData.readingTime} min de leitura
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <Separator />
+
+            {/* Preview do Conteúdo HTML */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Conteúdo HTML Formatado:</h3>
+              <div className="border rounded-lg p-6 bg-white">
+                {formData.isFeatured && formData.bannerUrl && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-yellow-700">Banner de Destaque:</span>
+                    </div>
+                    <img 
+                      src={formData.bannerUrl} 
+                      alt={`Banner de destaque - ${formData.title}`}
+                      className="w-full h-32 object-cover rounded-md border-2 border-yellow-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {formData.featuredImage && (
+                  <img 
+                    src={formData.featuredImage} 
+                    alt={formData.title}
+                    className="w-full h-64 object-cover rounded-md mb-6"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                )}
+                
+                <div className="prose max-w-none">
+                  {formData.contentHtml ? (
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: formData.contentHtml }}
+                      className="prose-sm prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-em:text-gray-700"
+                    />
+                  ) : (
+                    <p className="text-gray-500 italic">
+                      {formData.content || 'Adicione conteúdo HTML para ver a formatação aqui...'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setPreviewOpen(false)}
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
