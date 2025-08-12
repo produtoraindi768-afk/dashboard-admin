@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import { 
   Plus, 
   Search, 
@@ -675,16 +676,14 @@ const NewsPage = () => {
             
             <div className="space-y-2">
               <Label htmlFor="contentHtml">Conteúdo HTML (para estilização no portal)</Label>
-              <Textarea
-                id="contentHtml"
-                value={formData.contentHtml || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, contentHtml: e.target.value }))}
-                placeholder="Conteúdo com formatação HTML para o portal..."
-                rows={8}
-                className="font-mono text-sm"
+              <RichTextEditor
+                content={formData.contentHtml || ''}
+                onChange={(html) => setFormData(prev => ({ ...prev, contentHtml: html }))}
+                placeholder="Conteúdo com formatação rica para o portal..."
+                className="min-h-[300px]"
               />
               <p className="text-xs text-gray-500">
-                Use HTML para formatação rica (ex: &lt;p&gt;, &lt;h2&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;li&gt;, etc.)
+                Use a barra de ferramentas acima para formatar o conteúdo com negrito, itálico, listas, links, imagens e muito mais.
               </p>
             </div>
             

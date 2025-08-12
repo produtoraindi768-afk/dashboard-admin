@@ -5,12 +5,12 @@ import { getAuth } from 'firebase/auth';
 
 // Configuração do Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyBqJ8K9L2M3N4O5P6Q7R8S9T0U1V2W3X4Y",
-  authDomain: "dashboard-f0217.firebaseapp.com",
-  projectId: "dashboard-f0217",
-  storageBucket: "dashboard-f0217.appspot.com",
-  messagingSenderId: "791615571",
-  appId: "1:791615571:web:abc123def456ghi789"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicializa o Firebase
