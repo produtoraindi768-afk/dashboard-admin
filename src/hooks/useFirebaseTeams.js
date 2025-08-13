@@ -26,6 +26,7 @@ export const useFirebaseTeams = () => {
             {
               id: '1',
               name: 'Team Alpha',
+              tag: 'ALPHA',
               game: 'League of Legends',
               region: 'BR',
               status: 'active',
@@ -35,6 +36,7 @@ export const useFirebaseTeams = () => {
             {
               id: '2',
               name: 'Team Beta',
+              tag: 'BETA',
               game: 'Valorant',
               region: 'NA',
               status: 'active',

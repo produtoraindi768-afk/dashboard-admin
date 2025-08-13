@@ -30,11 +30,13 @@ export const useFirebaseMatches = () => {
               team1: {
                 id: '1',
                 name: 'Team Alpha',
+                tag: 'ALPHA',
                 logo: null
               },
               team2: {
                 id: '2', 
                 name: 'Team Beta',
+                tag: 'BETA',
                 logo: null
               },
               scheduledDate: new Date().toISOString(),
@@ -62,11 +64,13 @@ export const useFirebaseMatches = () => {
               team1: {
                 id: '1',
                 name: 'Team Alpha',
+                tag: 'ALPHA',
                 logo: null
               },
               team2: {
                 id: '2',
-                name: 'Team Beta', 
+                name: 'Team Beta',
+                tag: 'BETA', 
                 logo: null
               },
               scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -215,7 +219,7 @@ export const useFirebaseMatches = () => {
           match.id === matchId 
             ? { 
                 ...match, 
-                result,
+                result, 
                 updatedAt: new Date().toISOString() 
               }
             : match

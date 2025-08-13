@@ -179,12 +179,14 @@ const MatchManagement = () => {
         team1: {
           id: team1.id,
           name: team1.name,
+          tag: team1.tag || null,
           logo: team1.logo || null,
           avatar: team1.avatar || null
         },
         team2: {
           id: team2.id,
           name: team2.name,
+          tag: team2.tag || null,
           logo: team2.logo || null,
           avatar: team2.avatar || null
         },
@@ -275,6 +277,7 @@ const MatchManagement = () => {
       });
     } catch (err) {
       console.error('Erro ao atualizar resultado:', err);
+      setFormError('Erro ao atualizar resultado da partida');
     }
   };
 
@@ -328,12 +331,14 @@ const MatchManagement = () => {
         team1: {
           id: team1.id,
           name: team1.name,
+          tag: team1.tag || null,
           logo: team1.logo || null,
           avatar: team1.avatar || null
         },
         team2: {
           id: team2.id,
           name: team2.name,
+          tag: team2.tag || null,
           logo: team2.logo || null,
           avatar: team2.avatar || null
         },
@@ -396,6 +401,7 @@ const MatchManagement = () => {
 
   const openResultDialog = (match) => {
     setSelectedMatch(match);
+    setFormError(''); // Limpar erro anterior
     setMatchResult({
       team1Score: match.result?.team1Score || 0,
       team2Score: match.result?.team2Score || 0,
@@ -912,7 +918,12 @@ const MatchManagement = () => {
                               {generateDefaultAvatar(match.team1?.name || '').initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{match.team1?.name}</span>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{match.team1?.name}</span>
+                            {match.team1?.tag && (
+                              <Badge variant="outline" className="text-xs w-fit">{match.team1.tag}</Badge>
+                            )}
+                          </div>
                         </div>
                         
                         <span className="text-muted-foreground font-bold">VS</span>
@@ -924,20 +935,60 @@ const MatchManagement = () => {
                               {generateDefaultAvatar(match.team2?.name || '').initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{match.team2?.name}</span>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{match.team2?.name}</span>
+                            {match.team2?.tag && (
+                              <Badge variant="outline" className="text-xs w-fit">{match.team2.tag}</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
                       {/* Resultado */}
-                      {match.status === 'finished' && match.result && (
-                        <div className="flex items-center gap-2 text-lg font-bold">
-                          <span className={match.result.winner === 'team1' ? 'text-green-600' : 'text-muted-foreground'}>
-                            {match.result.team1Score}
-                          </span>
-                          <span className="text-muted-foreground">-</span>
-                          <span className={match.result.winner === 'team2' ? 'text-green-600' : 'text-muted-foreground'}>
-                            {match.result.team2Score}
-                          </span>
+                      {(match.status === 'finished' || match.status === 'live') && match.result && (
+                        <div className="flex flex-col items-end gap-1">
+                          {/* Resultado Geral */}
+                          <div className="flex items-center gap-2 text-lg font-bold">
+                            <span className={match.result.winner === 'team1' ? 'text-green-600' : 'text-muted-foreground'}>
+                              {match.result.team1Score}
+                            </span>
+                            <span className="text-muted-foreground">-</span>
+                            <span className={match.result.winner === 'team2' ? 'text-green-600' : 'text-muted-foreground'}>
+                              {match.result.team2Score}
+                            </span>
+                            {match.status === 'live' && (
+                              <Badge variant="destructive" className="ml-2 animate-pulse text-xs">
+                                AO VIVO
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Resultado MD3/MD5 */}
+                          {match.format === 'MD3' && match.resultMD3 && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span className={match.resultMD3.winner === 'team1' ? 'text-green-600' : 'text-muted-foreground'}>
+                                {match.resultMD3.team1Score}
+                              </span>
+                              <span>-</span>
+                              <span className={match.resultMD3.winner === 'team2' ? 'text-green-600' : 'text-muted-foreground'}>
+                                {match.resultMD3.team2Score}
+                              </span>
+                              <span className="text-xs">(MD3)</span>
+                            </div>
+                          )}
+                          
+                          {match.format === 'MD5' && match.resultMD5 && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span className={match.resultMD5.winner === 'team1' ? 'text-green-600' : 'text-muted-foreground'}>
+                                {match.resultMD5.team1Score}
+                              </span>
+                              <span>-</span>
+                              <span className={match.resultMD5.winner === 'team2' ? 'text-green-600' : 'text-muted-foreground'}>
+                                {match.resultMD5.team2Score}
+                              </span>
+                              <span className="text-xs">(MD5)</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1025,6 +1076,14 @@ const MatchManagement = () => {
               {selectedMatch && `${selectedMatch.team1?.name} vs ${selectedMatch.team2?.name}`}
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Mensagem de Erro */}
+          {formError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
           
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
