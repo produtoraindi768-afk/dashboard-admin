@@ -215,9 +215,7 @@ export const useFirebaseMatches = () => {
           match.id === matchId 
             ? { 
                 ...match, 
-                result, 
-                status: 'finished',
-                finishedAt: new Date().toISOString(),
+                result,
                 updatedAt: new Date().toISOString() 
               }
             : match

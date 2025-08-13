@@ -172,8 +172,6 @@ class FirebaseMatchService {
       const docRef = doc(this.firestore, this.collectionName, matchId);
       await updateDoc(docRef, {
         result,
-        status: 'finished',
-        finishedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       return true;
