@@ -29,16 +29,34 @@ export const PLATFORMS = [
 
 // Categorias disponíveis
 export const CATEGORIES = [
-  'FPS',
+  // Gerais
   'Just Chatting',
+  'IRL',
+  'Variety',
+  'Music',
+  'Art',
+  'FPS',
   'MOBA',
   'RPG',
   'Strategy',
   'Sports',
-  'Music',
-  'Art',
-  'IRL',
-  'Variety',
+  // Jogos populares
+  'Fortnite',
+  'Valorant',
+  'League of Legends',
+  'Counter-Strike 2',
+  'Dota 2',
+  'GTA V / RP',
+  'Minecraft',
+  'Call of Duty: Warzone',
+  'Apex Legends',
+  'PUBG',
+  'Overwatch 2',
+  'Rocket League',
+  'EA FC',
+  'NBA 2K',
+  'Hearthstone',
+  'Elden Ring',
   'Outro'
 ];
 
@@ -306,14 +324,12 @@ export const streamerAPI = {
     });
   },
 
-  // GET /api/statistics
+  // GET /api/streamers/stats
   getStatistics: async () => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve({
-          data: streamerService.getStatistics(),
-          timestamp: new Date().toISOString()
-        });
+        const stats = streamerService.getStatistics();
+        resolve({ data: stats });
       }, 100);
     });
   }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -9,6 +9,9 @@ import { Highlight } from '@tiptap/extension-highlight';
 import { Underline } from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
 import { Image } from '@tiptap/extension-image';
+import { Youtube } from '@tiptap/extension-youtube';
+import { VideoEmbed } from './extensions/VideoEmbed';
+import VideoEmbedDialog from './VideoEmbedDialog';
 import { Button } from './button';
 import { Separator } from './separator';
 import {
@@ -27,12 +30,17 @@ import {
   Highlighter,
   Link as LinkIcon,
   Image as ImageIcon,
+  Video,
+  Play,
   Undo,
   Redo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import './RichTextEditor.css';
 
 const RichTextEditor = ({ content, onChange, placeholder = "Digite seu conteúdo aqui...", className }) => {
+  const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -48,6 +56,11 @@ const RichTextEditor = ({ content, onChange, placeholder = "Digite seu conteúdo
         openOnClick: false,
       }),
       Image,
+      Youtube.configure({
+        controls: true,
+        nocookie: false,
+      }),
+      VideoEmbed,
     ],
     content: content,
     onUpdate: ({ editor }) => {
@@ -85,6 +98,37 @@ const RichTextEditor = ({ content, onChange, placeholder = "Digite seu conteúdo
     }
 
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  };
+
+  const addYouTubeVideo = () => {
+    const url = window.prompt('URL do vídeo do YouTube');
+    if (url) {
+      editor.chain().focus().setYoutubeVideo({
+        src: url,
+        width: 640,
+        height: 480,
+      }).run();
+    }
+  };
+
+  const openVideoDialog = () => {
+    setIsVideoDialogOpen(true);
+  };
+
+  const handleVideoEmbed = (videoData) => {
+    if (videoData.type === 'youtube') {
+      editor.chain().focus().setYoutubeVideo({
+        src: videoData.url,
+        width: parseInt(videoData.width) || 640,
+        height: videoData.height || 480,
+      }).run();
+    } else {
+      editor.chain().focus().setVideoEmbed({
+        url: videoData.url,
+        width: videoData.width,
+        height: videoData.height,
+      }).run();
+    }
   };
 
   return (
@@ -235,8 +279,29 @@ const RichTextEditor = ({ content, onChange, placeholder = "Digite seu conteúdo
           variant="ghost"
           size="sm"
           onClick={addImage}
+          title="Adicionar imagem"
         >
           <ImageIcon className="h-4 w-4" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={addYouTubeVideo}
+          title="Incorporar vídeo do YouTube"
+        >
+          <Play className="h-4 w-4" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={openVideoDialog}
+          title="Incorporar vídeo (YouTube, Vimeo, Twitch, etc.)"
+        >
+          <Video className="h-4 w-4" />
         </Button>
 
         <Separator orientation="vertical" className="h-6" />
@@ -265,12 +330,19 @@ const RichTextEditor = ({ content, onChange, placeholder = "Digite seu conteúdo
 
       {/* Editor */}
       <div className="min-h-[200px]">
-        <EditorContent 
-          editor={editor} 
+        <EditorContent
+          editor={editor}
           placeholder={placeholder}
           className="prose prose-sm max-w-none p-4 focus:outline-none"
         />
       </div>
+
+      {/* Modal de incorporação de vídeo */}
+      <VideoEmbedDialog
+        isOpen={isVideoDialogOpen}
+        onClose={() => setIsVideoDialogOpen(false)}
+        onEmbed={handleVideoEmbed}
+      />
     </div>
   );
 };

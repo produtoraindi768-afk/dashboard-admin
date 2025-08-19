@@ -66,16 +66,34 @@ export const PLATFORMS = [
 
 // Categorias disponíveis
 export const CATEGORIES = [
-  'FPS',
+  // Gerais
   'Just Chatting',
+  'IRL',
+  'Variety',
+  'Music',
+  'Art',
+  'FPS',
   'MOBA',
   'RPG',
   'Strategy',
   'Sports',
-  'Music',
-  'Art',
-  'IRL',
-  'Variety',
+  // Jogos populares
+  'Fortnite',
+  'Valorant',
+  'League of Legends',
+  'Counter-Strike 2',
+  'Dota 2',
+  'GTA V / RP',
+  'Minecraft',
+  'Call of Duty: Warzone',
+  'Apex Legends',
+  'PUBG',
+  'Overwatch 2',
+  'Rocket League',
+  'EA FC',
+  'NBA 2K',
+  'Hearthstone',
+  'Elden Ring',
   'Outro'
 ];
 
@@ -399,43 +417,58 @@ class FirebaseStreamerService {
   }
 }
 
-// Instância singleton do serviço
 export const firebaseStreamerService = new FirebaseStreamerService();
 
-// API REST compatível com Firebase
+// API de alto nível para consumo no app
 export const firebaseStreamerAPI = {
   // GET /api/streamers
   getStreamers: async (filters = {}) => {
     try {
-      let streamers;
-      
-      if (filters.status && filters.status !== 'all') {
-        streamers = await firebaseStreamerService.getStreamersByStatus(filters.status);
-      } else {
-        streamers = await firebaseStreamerService.getAllStreamers();
+      let streamers = await firebaseStreamerService.getAllStreamers();
+
+      // Aplicar filtros no client
+      if (filters.status) {
+        switch (filters.status) {
+          case 'online':
+            streamers = streamers.filter(s => s.isOnline);
+            break;
+          case 'offline':
+            streamers = streamers.filter(s => !s.isOnline);
+            break;
+          default:
+            break;
+        }
       }
-      
+
       if (filters.platform) {
         streamers = streamers.filter(s => s.platform === filters.platform);
       }
-      
+
       if (filters.category) {
         streamers = streamers.filter(s => s.category === filters.category);
       }
-      
+
       if (filters.search) {
-        const searchResults = await firebaseStreamerService.searchStreamers(filters.search);
-        streamers = searchResults;
+        const q = filters.search.toLowerCase();
+        streamers = streamers.filter(s =>
+          s.name.toLowerCase().includes(q) ||
+          s.platform.toLowerCase().includes(q) ||
+          s.category.toLowerCase().includes(q)
+        );
       }
-      
+
       return {
         data: streamers,
         total: streamers.length,
-        timestamp: new Date().toISOString(),
-        source: 'firebase'
+        timestamp: new Date().toISOString()
       };
     } catch (error) {
-      throw error;
+      console.error('Erro ao carregar streamers:', error);
+      return {
+        data: [],
+        total: 0,
+        error: 'Não foi possível carregar os streamers'
+      };
     }
   },
 
@@ -445,7 +478,8 @@ export const firebaseStreamerAPI = {
       const streamer = await firebaseStreamerService.getStreamerById(id);
       return { data: streamer };
     } catch (error) {
-      throw error;
+      console.error('Erro ao buscar streamer:', error);
+      return { error: 'Streamer não encontrado' };
     }
   },
 
@@ -455,7 +489,8 @@ export const firebaseStreamerAPI = {
       const streamer = await firebaseStreamerService.addStreamer(data);
       return { data: streamer };
     } catch (error) {
-      throw error;
+      console.error('Erro ao criar streamer:', error);
+      return { error: 'Não foi possível criar o streamer' };
     }
   },
 
@@ -465,7 +500,8 @@ export const firebaseStreamerAPI = {
       const streamer = await firebaseStreamerService.updateStreamer(id, data);
       return { data: streamer };
     } catch (error) {
-      throw error;
+      console.error('Erro ao atualizar streamer:', error);
+      return { error: 'Não foi possível atualizar o streamer' };
     }
   },
 
@@ -475,21 +511,19 @@ export const firebaseStreamerAPI = {
       await firebaseStreamerService.deleteStreamer(id);
       return { success: true };
     } catch (error) {
-      throw error;
+      console.error('Erro ao deletar streamer:', error);
+      return { error: 'Não foi possível deletar o streamer' };
     }
   },
 
-  // GET /api/statistics
+  // GET /api/streamers/stats
   getStatistics: async () => {
     try {
       const stats = await firebaseStreamerService.getStatistics();
-      return {
-        data: stats,
-        timestamp: new Date().toISOString(),
-        source: 'firebase'
-      };
+      return { data: stats };
     } catch (error) {
-      throw error;
+      console.error('Erro ao obter estatísticas:', error);
+      return { error: 'Não foi possível obter estatísticas' };
     }
   }
 };

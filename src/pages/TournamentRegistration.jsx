@@ -36,14 +36,19 @@ const TournamentRegistration = () => {
     format: '',
     description: '',
     startDate: '',
+    startTime: '',
     endDate: '',
+    endTime: '',
     registrationDeadline: '',
+    registrationTime: '',
     maxParticipants: '',
     prizePool: '',
     entryFee: '',
     rules: '',
     status: 'Inscrições Abertas',
-    isActive: true
+    isActive: true,
+    avatar: '',
+    tournamentUrl: ''
   });
 
   const resetForm = () => {
@@ -53,14 +58,19 @@ const TournamentRegistration = () => {
       format: '',
       description: '',
       startDate: '',
+      startTime: '',
       endDate: '',
+      endTime: '',
       registrationDeadline: '',
+      registrationTime: '',
       maxParticipants: '',
       prizePool: '',
       entryFee: '',
       rules: '',
       status: 'Inscrições Abertas',
-      isActive: true
+      isActive: true,
+      avatar: '',
+      tournamentUrl: ''
     });
     setEditingTournament(null);
     setShowForm(false);
@@ -69,15 +79,31 @@ const TournamentRegistration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validação básica
+    if (!formData.startDate) {
+      alert('Por favor, preencha a data de início.');
+      return;
+    }
+    
     try {
+      // Combina data e horário para criar objetos Date completos
+      const createDateTime = (date, time) => {
+        if (!date) return null;
+        if (!time) {
+          // Se não há horário, cria uma data com horário padrão (00:00)
+          return new Date(`${date}T00:00`);
+        }
+        return new Date(`${date}T${time}`);
+      };
+
       const tournamentData = {
         ...formData,
         maxParticipants: parseInt(formData.maxParticipants) || 0,
         prizePool: parseFloat(formData.prizePool) || 0,
         entryFee: parseFloat(formData.entryFee) || 0,
-        startDate: new Date(formData.startDate),
-        endDate: new Date(formData.endDate),
-        registrationDeadline: new Date(formData.registrationDeadline)
+        startDate: createDateTime(formData.startDate, formData.startTime),
+        endDate: createDateTime(formData.endDate, formData.endTime),
+        registrationDeadline: createDateTime(formData.registrationDeadline, formData.registrationTime)
       };
 
       if (editingTournament) {
@@ -93,20 +119,46 @@ const TournamentRegistration = () => {
   };
 
   const handleEdit = (tournament) => {
+    // Função auxiliar para extrair data e horário de um timestamp
+    const extractDateTime = (timestamp) => {
+      if (!timestamp) return { date: '', time: '' };
+      
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else {
+        date = new Date(timestamp);
+      }
+      
+      return {
+        date: date.toISOString().split('T')[0],
+        time: date.toTimeString().split(' ')[0].substring(0, 5)
+      };
+    };
+
+    const startDateTime = extractDateTime(tournament.startDate);
+    const endDateTime = extractDateTime(tournament.endDate);
+    const registrationDateTime = extractDateTime(tournament.registrationDeadline);
+
     setFormData({
       name: tournament.name || '',
       game: tournament.game || '',
       format: tournament.format || '',
       description: tournament.description || '',
-      startDate: tournament.startDate ? (tournament.startDate.toDate ? tournament.startDate.toDate().toISOString().split('T')[0] : new Date(tournament.startDate).toISOString().split('T')[0]) : '',
-      endDate: tournament.endDate ? (tournament.endDate.toDate ? tournament.endDate.toDate().toISOString().split('T')[0] : new Date(tournament.endDate).toISOString().split('T')[0]) : '',
-      registrationDeadline: tournament.registrationDeadline ? (tournament.registrationDeadline.toDate ? tournament.registrationDeadline.toDate().toISOString().split('T')[0] : new Date(tournament.registrationDeadline).toISOString().split('T')[0]) : '',
+      startDate: startDateTime.date,
+      startTime: startDateTime.time,
+      endDate: endDateTime.date,
+      endTime: endDateTime.time,
+      registrationDeadline: registrationDateTime.date,
+      registrationTime: registrationDateTime.time,
       maxParticipants: tournament.maxParticipants?.toString() || '',
       prizePool: tournament.prizePool?.toString() || '',
       entryFee: tournament.entryFee?.toString() || '',
       rules: tournament.rules || '',
       status: tournament.status || 'Inscrições Abertas',
-      isActive: tournament.isActive !== undefined ? tournament.isActive : true
+      isActive: tournament.isActive !== undefined ? tournament.isActive : true,
+      avatar: tournament.avatar || '',
+      tournamentUrl: tournament.tournamentUrl || ''
     });
     setEditingTournament(tournament);
     setShowForm(true);
@@ -150,6 +202,36 @@ const TournamentRegistration = () => {
     
     // Se for um Timestamp do Firebase
     if (date && typeof date.toDate === 'function') {
+      const dateObj = date.toDate();
+      return dateObj.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Se for uma string ou objeto Date
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+      return 'Data inválida';
+    }
+    
+    return dateObj.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDateOnly = (date) => {
+    if (!date) return 'N/A';
+    
+    // Se for um Timestamp do Firebase
+    if (date && typeof date.toDate === 'function') {
       return date.toDate().toLocaleDateString('pt-BR');
     }
     
@@ -160,6 +242,33 @@ const TournamentRegistration = () => {
     }
     
     return dateObj.toLocaleDateString('pt-BR');
+  };
+
+  const formatTimeOnly = (date) => {
+    if (!date) return null;
+    
+    // Se for um Timestamp do Firebase
+    if (date && typeof date.toDate === 'function') {
+      const time = date.toDate().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      // Verifica se o horário é 00:00 (padrão quando não há horário específico)
+      return time === '00:00' ? null : time;
+    }
+    
+    // Se for uma string ou objeto Date
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+      return null;
+    }
+    
+    const time = dateObj.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    // Verifica se o horário é 00:00 (padrão quando não há horário específico)
+    return time === '00:00' ? null : time;
   };
 
   const formatCurrency = (value) => {
@@ -300,6 +409,28 @@ const TournamentRegistration = () => {
                 </div>
                 
                 <div>
+                  <Label htmlFor="avatar">Avatar do Torneio</Label>
+                  <Input
+                    id="avatar"
+                    type="url"
+                    placeholder="https://exemplo.com/avatar.jpg"
+                    value={formData.avatar}
+                    onChange={(e) => setFormData({...formData, avatar: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="tournamentUrl">URL do Torneio</Label>
+                  <Input
+                    id="tournamentUrl"
+                    type="url"
+                    placeholder="https://exemplo.com/torneio"
+                    value={formData.tournamentUrl}
+                    onChange={(e) => setFormData({...formData, tournamentUrl: e.target.value})}
+                  />
+                </div>
+                
+                <div>
                   <Label htmlFor="game">Jogo *</Label>
                   <Select value={formData.game} onValueChange={(value) => setFormData({...formData, game: value})}>
                     <SelectTrigger>
@@ -343,32 +474,56 @@ const TournamentRegistration = () => {
                 
                 <div>
                   <Label htmlFor="startDate">Data de Início</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                    />
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                    />
+                  </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="endDate">Data de Término</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                    />
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    />
+                  </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="registrationDeadline">Prazo de Inscrição</Label>
-                  <Input
-                    id="registrationDeadline"
-                    type="date"
-                    value={formData.registrationDeadline}
-                    onChange={(e) => setFormData({...formData, registrationDeadline: e.target.value})}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="registrationDeadline"
+                      type="date"
+                      value={formData.registrationDeadline}
+                      onChange={(e) => setFormData({...formData, registrationDeadline: e.target.value})}
+                    />
+                    <Input
+                      id="registrationTime"
+                      type="time"
+                      value={formData.registrationTime}
+                      onChange={(e) => setFormData({...formData, registrationTime: e.target.value})}
+                    />
+                  </div>
                 </div>
                 
                 <div>
@@ -467,9 +622,21 @@ const TournamentRegistration = () => {
             <Card key={tournament.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{tournament.name}</CardTitle>
-                    <CardDescription>{tournament.game}</CardDescription>
+                  <div className="flex items-center gap-3">
+                    {tournament.avatar && (
+                      <img 
+                        src={tournament.avatar} 
+                        alt={`Avatar do ${tournament.name}`}
+                        className="w-12 h-12 rounded-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    )}
+                    <div>
+                      <CardTitle className="text-lg">{tournament.name}</CardTitle>
+                      <CardDescription>{tournament.game}</CardDescription>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Badge className={getStatusColor(tournament.status)}>
@@ -490,7 +657,12 @@ const TournamentRegistration = () => {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>{formatDate(tournament.startDate)}</span>
+                      <div>
+                        <div>{formatDateOnly(tournament.startDate)}</div>
+                        {formatTimeOnly(tournament.startDate) && (
+                          <div className="text-xs text-gray-500">{formatTimeOnly(tournament.startDate)}</div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <Trophy className="h-4 w-4 text-gray-400" />
@@ -506,7 +678,38 @@ const TournamentRegistration = () => {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2 pt-2">
+                  {/* Informações adicionais de data */}
+                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <div>Fim: {formatDateOnly(tournament.endDate)}</div>
+                        {formatTimeOnly(tournament.endDate) && (
+                          <div className="text-xs">{formatTimeOnly(tournament.endDate)}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <div>Inscrição: {formatDateOnly(tournament.registrationDeadline)}</div>
+                        {formatTimeOnly(tournament.registrationDeadline) && (
+                          <div className="text-xs">{formatTimeOnly(tournament.registrationDeadline)}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {tournament.tournamentUrl && (
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        onClick={() => window.open(tournament.tournamentUrl, '_blank')}
+                      >
+                        Ver Torneio
+                      </Button>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm" 

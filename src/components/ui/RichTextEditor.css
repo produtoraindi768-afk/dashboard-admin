@@ -1,0 +1,106 @@
+/* Estilos para o editor de texto rico */
+
+/* Container de vídeo responsivo */
+.video-embed-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* Proporção 16:9 */
+  height: 0;
+  overflow: hidden;
+  margin: 1rem 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.video-embed-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Placeholder para vídeos inválidos */
+.video-embed-placeholder,
+.video-embed-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background-color: #f3f4f6;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 14px;
+  margin: 1rem 0;
+}
+
+.video-embed-error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* Estilos para vídeos do YouTube (extensão oficial) */
+.ProseMirror .youtube-video {
+  margin: 1rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.ProseMirror .youtube-video iframe {
+  border-radius: 8px;
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+  .video-embed-container {
+    margin: 0.5rem 0;
+  }
+  
+  .video-embed-placeholder,
+  .video-embed-error {
+    min-height: 150px;
+    font-size: 12px;
+  }
+}
+
+/* Estilos para o editor quando em foco */
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Estilos para elementos selecionados no editor */
+.ProseMirror .ProseMirror-selectednode {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Melhorar a aparência dos vídeos no preview */
+.prose .video-embed-container,
+.prose .youtube-video {
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Estilos para diferentes tipos de vídeo */
+.video-embed-container[data-type="youtube"] {
+  border: 2px solid #ff0000;
+}
+
+.video-embed-container[data-type="vimeo"] {
+  border: 2px solid #1ab7ea;
+}
+
+.video-embed-container[data-type="twitch"] {
+  border: 2px solid #9146ff;
+}
+
+.video-embed-container[data-type="iframe"] {
+  border: 2px solid #6b7280;
+}
