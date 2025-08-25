@@ -10,6 +10,7 @@ import StreamerRegistration from './pages/StreamerRegistration';
 import TeamRegistration from './pages/TeamRegistration';
 
 import TournamentRegistration from './pages/TournamentRegistration';
+import TournamentDataImport from './pages/TournamentDataImport';
 import StatusManagement from './pages/StatusManagement';
 import MatchManagement from './pages/MatchManagement';
 import ApiPreview from './pages/ApiPreview';
@@ -106,6 +107,9 @@ const AppContent = () => {
                   
                   {/* Cadastro de Torneios */}
                   <Route path="/torneios" element={<TournamentRegistration />} />
+                  
+                  {/* Importação de Dados Battlefy */}
+                  <Route path="/battlefy" element={<TournamentDataImport />} />
                   
                   {/* Gerenciamento de Status */}
                   <Route path="/status" element={<StatusManagement />} />

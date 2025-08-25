@@ -19,7 +19,8 @@ import {
   Newspaper,
   Sun,
   Moon,
-  Swords
+  Swords,
+  Download
 } from 'lucide-react';
 import { useFirebaseStreamers, useFirebaseStreamerStatistics } from '../hooks/useFirebaseStreamers';
 import { useFirebaseTeams } from '../hooks/useFirebaseTeams';
@@ -65,6 +66,12 @@ const Sidebar = ({ isOpen, onToggle, className = '' }) => {
       icon: Trophy,
       description: 'Gerenciar torneios',
       badge: tournaments.length
+    },
+    {
+      title: 'Battlefy',
+      href: '/battlefy',
+      icon: Download,
+      description: 'Importar dados Battlefy'
     },
     {
       title: 'Status',

@@ -25,11 +25,13 @@ import {
   Loader2,
   Activity,
   Target,
-  MapPin
+  MapPin,
+  Download
 } from 'lucide-react';
 import { useFirebaseMatches } from '../hooks/useFirebaseMatches';
 import { useFirebaseTeams } from '../hooks/useFirebaseTeams';
 import { useFirebaseTournaments } from '../hooks/useFirebaseTournaments';
+import BattlefyMatchEditModal from '../components/BattlefyMatchEditModal';
 import {
   formatRelativeTime,
   generateDefaultAvatar,
@@ -71,6 +73,10 @@ const MatchManagement = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Estados para modal de edição do Battlefy
+  const [isBattlefyEditModalOpen, setIsBattlefyEditModalOpen] = useState(false);
+  const [selectedBattlefyMatch, setSelectedBattlefyMatch] = useState(null);
 
   // Form states
   const [newMatch, setNewMatch] = useState({
@@ -388,15 +394,40 @@ const MatchManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteMatch = async (matchId) => {
+  const handleDeleteMatch = async (matchId, source = 'manual') => {
     if (window.confirm('Tem certeza que deseja excluir esta partida?')) {
       try {
-        await deleteMatch(matchId);
+        await deleteMatch(matchId, source);
         setSuccessMessage('Partida excluída com sucesso!');
       } catch (err) {
         console.error('Erro ao excluir partida:', err);
       }
     }
+  };
+
+  // Funções específicas para partidas do Battlefy
+  const handleEditBattlefyMatch = (match) => {
+    setSelectedBattlefyMatch(match);
+    setIsBattlefyEditModalOpen(true);
+  };
+
+  const handleSaveBattlefyMatch = async (updatedMatch) => {
+    try {
+      await updateMatch(updatedMatch.id, {
+        scheduledDate: updatedMatch.scheduledDate,
+        status: updatedMatch.status,
+        result: updatedMatch.result
+      }, 'battlefy'); // Especificar que é uma partida do Battlefy
+      setSuccessMessage('Partida do Battlefy atualizada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao atualizar partida do Battlefy:', err);
+      setError('Erro ao atualizar partida do Battlefy: ' + err.message);
+    }
+  };
+
+  const closeBattlefyEditModal = () => {
+    setIsBattlefyEditModalOpen(false);
+    setSelectedBattlefyMatch(null);
   };
 
   const openResultDialog = (match) => {
@@ -1023,7 +1054,8 @@ const MatchManagement = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openEditDialog(match)}
+                          onClick={() => match.source === 'battlefy' ? handleEditBattlefyMatch(match) : openEditDialog(match)}
+                          title={match.source === 'battlefy' ? 'Editar partida do Battlefy (limitado)' : 'Editar partida'}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -1031,7 +1063,7 @@ const MatchManagement = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteMatch(match.id)}
+                          onClick={() => handleDeleteMatch(match.id, match.source)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1045,6 +1077,16 @@ const MatchManagement = () => {
                       <Trophy className="h-4 w-4" />
                       {match.tournamentName}
                     </div>
+                    
+                    {/* Identificação da origem da partida */}
+                    {match.source === 'battlefy' && (
+                      <div className="flex items-center gap-1">
+                        <Download className="h-4 w-4 text-blue-500" />
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                          Importado do Battlefy
+                        </Badge>
+                      </div>
+                    )}
                     
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
@@ -1480,6 +1522,14 @@ const MatchManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Edição do Battlefy */}
+      <BattlefyMatchEditModal
+        match={selectedBattlefyMatch}
+        isOpen={isBattlefyEditModalOpen}
+        onClose={closeBattlefyEditModal}
+        onSave={handleSaveBattlefyMatch}
+      />
     </div>
   );
 };
