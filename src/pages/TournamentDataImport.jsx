@@ -52,6 +52,13 @@ const TournamentDataImport = () => {
   // Estados para atualização de partidas
   const [isUpdatingMatches, setIsUpdatingMatches] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
+  
+  // Estados para atualização de torneios
+  const [isUpdatingTournament, setIsUpdatingTournament] = useState(false);
+  const [tournamentUpdateProgress, setTournamentUpdateProgress] = useState(0);
+  const [tournamentUpdateStatus, setTournamentUpdateStatus] = useState('');
+  const [tournamentUpdateResults, setTournamentUpdateResults] = useState(null);
+  const [selectedConfigForUpdate, setSelectedConfigForUpdate] = useState(null);
 
   // Carregar configurações salvas ao montar o componente
   useEffect(() => {
@@ -313,6 +320,94 @@ const TournamentDataImport = () => {
   };
 
   /**
+   * Atualiza dados do torneio sem duplicar
+   */
+  const updateTournament = async () => {
+    if (!tournamentId.trim() || !stageId.trim()) {
+      setError('Tournament ID e Stage ID são obrigatórios');
+      return;
+    }
+
+    setIsUpdatingTournament(true);
+    setSelectedConfigForUpdate(null);
+    setTournamentUpdateProgress(0);
+    setTournamentUpdateStatus('Iniciando atualização...');
+    setError('');
+    setTournamentUpdateResults(null);
+
+    try {
+      const result = await battlefyAPI.updateTournament(
+        tournamentId, 
+        stageId, 
+        (status) => {
+          setTournamentUpdateStatus(status);
+          setTournamentUpdateProgress(prev => Math.min(prev + 25, 90));
+        }
+      );
+      
+      setTournamentUpdateProgress(100);
+      setTournamentUpdateResults(result);
+      
+      if (result.success) {
+        setTournamentUpdateStatus('Atualização concluída com sucesso!');
+        setSuccess('Torneio atualizado com sucesso!');
+        await loadData();
+      } else {
+        setTournamentUpdateStatus('Atualização concluída com erros');
+        setError(result.error || 'Erro na atualização');
+      }
+    } catch (error) {
+      setTournamentUpdateStatus('Erro na atualização');
+      setError('Erro ao atualizar torneio');
+    } finally {
+      setIsUpdatingTournament(false);
+      setSelectedConfigForUpdate(null);
+    }
+  };
+
+  /**
+   * Atualiza um torneio específico da lista de configurações
+   */
+  const updateSpecificTournament = async (config) => {
+    setIsUpdatingTournament(true);
+    setSelectedConfigForUpdate(config);
+    setTournamentUpdateProgress(0);
+    setTournamentUpdateStatus(`Iniciando atualização de "${config.tournamentName || 'Torneio sem nome'}"...`);
+    setError('');
+    setSuccess('');
+    setTournamentUpdateResults(null);
+
+    try {
+      const result = await battlefyAPI.updateTournament(
+        config.tournamentId, 
+        config.stageId, 
+        (status) => {
+          setTournamentUpdateStatus(status);
+          setTournamentUpdateProgress(prev => Math.min(prev + 25, 90));
+        }
+      );
+      
+      setTournamentUpdateProgress(100);
+      setTournamentUpdateResults(result);
+      
+      if (result.success) {
+        setTournamentUpdateStatus(`"${config.tournamentName || 'Torneio'}" atualizado com sucesso!`);
+        setSuccess(`Torneio "${config.tournamentName || 'sem nome'}" atualizado com sucesso!`);
+        await loadData();
+      } else {
+        setTournamentUpdateStatus('Atualização concluída com erros');
+        setError(result.error || 'Erro na atualização');
+      }
+    } catch (error) {
+      setTournamentUpdateStatus('Erro na atualização');
+      setError(`Erro ao atualizar torneio "${config.tournamentName || 'sem nome'}": ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsUpdatingTournament(false);
+      setSelectedConfigForUpdate(null);
+    }
+  };
+
+  /**
    * Debug da API Battlefy
    */
   const debugApi = async () => {
@@ -358,7 +453,7 @@ const TournamentDataImport = () => {
         </Alert>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Configuração */}
         <Card>
           <CardHeader>
@@ -591,6 +686,130 @@ const TournamentDataImport = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Configurações de Atualização */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Atualizar Torneio
+            </CardTitle>
+            <CardDescription>
+              Atualize dados de torneios já importados sem duplicar
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Progresso da atualização */}
+            {isUpdatingTournament && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progresso</span>
+                  <span>{tournamentUpdateProgress}%</span>
+                </div>
+                <Progress value={tournamentUpdateProgress} className="w-full" />
+                <p className="text-sm text-muted-foreground">{tournamentUpdateStatus}</p>
+              </div>
+            )}
+            
+            {/* Resultados da atualização */}
+            {tournamentUpdateResults && (
+              <div className="space-y-3">
+                <h4 className="font-medium">Resultados da Atualização:</h4>
+                
+                {tournamentUpdateResults.results.tournament && (
+                   <div className="flex items-center justify-between p-2 bg-muted rounded">
+                     <span className="text-sm">Torneio</span>
+                     <Badge variant={
+                       !tournamentUpdateResults.results.tournament.success ? "destructive" :
+                       tournamentUpdateResults.results.tournament.action === 'updated' ? "default" :
+                       tournamentUpdateResults.results.tournament.action === 'no_changes' ? "secondary" : "default"
+                     }>
+                       {tournamentUpdateResults.results.tournament.action === 'updated' ? 'Atualizado' : 
+                        tournamentUpdateResults.results.tournament.action === 'no_changes' ? 'Sem mudanças' : 
+                        tournamentUpdateResults.results.tournament.action === 'created' ? 'Criado' : 'Erro'}
+                     </Badge>
+                   </div>
+                 )}
+                
+                {tournamentUpdateResults.results.matches && (
+                  <div className="p-2 bg-muted rounded space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Partidas</span>
+                      <Badge variant={tournamentUpdateResults.results.matches.success ? "default" : "destructive"}>
+                        {tournamentUpdateResults.results.matches.success ? 'Atualizadas' : 'Erro'}
+                      </Badge>
+                    </div>
+                    {tournamentUpdateResults.results.matches.stats && (
+                       <div className="text-xs text-muted-foreground">
+                         Total: {tournamentUpdateResults.results.matches.stats.total} | 
+                         Novas: {tournamentUpdateResults.results.matches.stats.new} | 
+                         Atualizadas: {tournamentUpdateResults.results.matches.stats.updated} | 
+                         {tournamentUpdateResults.results.matches.stats.skippedUnknown > 0 && `Puladas: ${tournamentUpdateResults.results.matches.stats.skippedUnknown} | `}
+                         Sem mudanças: {tournamentUpdateResults.results.matches.stats.total - tournamentUpdateResults.results.matches.stats.new - tournamentUpdateResults.results.matches.stats.updated - (tournamentUpdateResults.results.matches.stats.skippedUnknown || 0)}
+                       </div>
+                     )}
+                  </div>
+                )}
+                
+                {tournamentUpdateResults.results.teams && (
+                  <div className="p-2 bg-muted rounded space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Times</span>
+                      <Badge variant={tournamentUpdateResults.results.teams.success ? "default" : "destructive"}>
+                        {tournamentUpdateResults.results.teams.success ? 'Atualizados' : 'Erro'}
+                      </Badge>
+                    </div>
+                    {tournamentUpdateResults.results.teams.stats && (
+                       <div className="text-xs text-muted-foreground">
+                         Total: {tournamentUpdateResults.results.teams.stats.total} | 
+                         Novos: {tournamentUpdateResults.results.teams.stats.new} | 
+                         Atualizados: {tournamentUpdateResults.results.teams.stats.updated} | 
+                         Sem mudanças: {tournamentUpdateResults.results.teams.stats.duplicatesAvoided || 0}
+                       </div>
+                     )}
+                  </div>
+                )}
+                
+                {tournamentUpdateResults.results.errors && tournamentUpdateResults.results.errors.length > 0 && (
+                  <div className="p-2 bg-destructive/10 rounded">
+                    <p className="text-sm font-medium text-destructive mb-1">Erros:</p>
+                    {tournamentUpdateResults.results.errors.map((error, index) => (
+                      <p key={index} className="text-xs text-destructive">• {error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Botões de ação */}
+            <div className="space-y-2">
+              <Button 
+                onClick={updateTournament} 
+                disabled={isUpdatingTournament || !tournamentId || !stageId}
+                className="w-full"
+              >
+                {isUpdatingTournament ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Atualizar Torneio
+              </Button>
+              
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4" />
+                  <span className="text-sm font-medium">Sobre a Atualização:</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  • Atualiza dados sem criar duplicatas<br/>
+                  • Mantém dados existentes e adiciona novos<br/>
+                  • Requer que o torneio já tenha sido importado
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Configurações Salvas */}
@@ -602,7 +821,7 @@ const TournamentDataImport = () => {
               Configurações Salvas
             </CardTitle>
             <CardDescription>
-              Configurações de torneios salvos anteriormente
+              Configurações de torneios salvos anteriormente. Clique no botão de atualização para atualizar um torneio específico.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -628,6 +847,20 @@ const TournamentDataImport = () => {
                         Carregar
                       </Button>
                       <Button 
+                        onClick={() => updateSpecificTournament(config)} 
+                        size="sm" 
+                        variant="default"
+                        disabled={isUpdatingTournament}
+                        className="px-2"
+                        title="Atualizar este torneio"
+                      >
+                        {isUpdatingTournament && selectedConfigForUpdate?.id === config.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button 
                         onClick={() => showDeleteOptions(config.id)} 
                         size="sm" 
                         variant="destructive"
@@ -639,6 +872,36 @@ const TournamentDataImport = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status de Atualização Individual */}
+      {selectedConfigForUpdate && isUpdatingTournament && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-blue-700">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Atualizando Torneio Específico
+            </CardTitle>
+            <CardDescription className="text-blue-600">
+              Atualizando "{selectedConfigForUpdate.tournamentName || 'Torneio sem nome'}"
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progresso</span>
+                <span>{tournamentUpdateProgress}%</span>
+              </div>
+              <Progress value={tournamentUpdateProgress} className="w-full" />
+              <p className="text-sm text-muted-foreground">{tournamentUpdateStatus}</p>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1 p-2 bg-white/50 rounded">
+              <p><strong>Tournament ID:</strong> {selectedConfigForUpdate.tournamentId.substring(0, 12)}...</p>
+              <p><strong>Stage ID:</strong> {selectedConfigForUpdate.stageId.substring(0, 12)}...</p>
             </div>
           </CardContent>
         </Card>

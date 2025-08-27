@@ -302,6 +302,11 @@ const TeamManagement = () => {
                         <Badge variant={team.isActive !== false ? "default" : "secondary"}>
                           {team.isActive !== false ? "Ativo" : "Inativo"}
                         </Badge>
+                        {team.source === 'battlefy' && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Battlefy
+                          </Badge>
+                        )}
                       </CardTitle>
                       <CardDescription>
                         {team.tag} • {GAMES.find(g => g.value === team.game)?.label || team.game} • 
@@ -310,28 +315,37 @@ const TeamManagement = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleTeamStatus(team)}
-                    >
-                      {team.isActive !== false ? "Desativar" : "Ativar"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => startEdit(team)}
-                      disabled={editingTeam === team.id}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(team.id, team.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {team.source !== 'battlefy' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleTeamStatus(team)}
+                        >
+                          {team.isActive !== false ? "Desativar" : "Ativar"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEdit(team)}
+                          disabled={editingTeam === team.id}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(team.id, team.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {team.source === 'battlefy' && (
+                      <Badge variant="secondary" className="text-xs">
+                        Importado do Battlefy
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -517,6 +531,16 @@ const TeamManagement = () => {
                       <div>
                         <strong>Email:</strong> {team.contactEmail || 'Não informado'}
                       </div>
+                      {team.source === 'battlefy' && (
+                        <>
+                          <div>
+                            <strong>Battlefy ID:</strong> {team.battlefyId || 'Não informado'}
+                          </div>
+                          <div>
+                            <strong>Torneio:</strong> {team.tournamentId || 'Não informado'}
+                          </div>
+                        </>
+                      )}
                       {team.discordServer && (
                         <div className="md:col-span-2">
                           <strong>Discord:</strong> 
@@ -542,7 +566,12 @@ const TeamManagement = () => {
                     
                     {team.createdAt && (
                       <div className="text-xs text-muted-foreground">
-                        Criado em: {formatDate(team.createdAt)}
+                        {team.source === 'battlefy' ? 'Importado em:' : 'Criado em:'} {formatDate(team.createdAt)}
+                        {team.source === 'battlefy' && team.updatedAt && team.updatedAt !== team.createdAt && (
+                          <span className="ml-2">
+                            • Atualizado em: {formatDate(team.updatedAt)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

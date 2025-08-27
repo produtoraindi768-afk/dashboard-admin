@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { firebaseTeamService } from '../services/firebaseTeamService';
 import { useFirebase } from '../contexts/FirebaseContext';
 
@@ -8,6 +9,115 @@ export const useFirebaseTeams = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(false);
+
+  // Mapear dados das equipes do Battlefy
+  const mapBattlefyTeams = useCallback((docs) => {
+    return docs.map((doc) => {
+      const data = doc.data();
+      let players = [];
+      
+      // Parse dos jogadores se estiver em formato string
+      if (typeof data.players === 'string') {
+        try {
+          // Remove [object Object] e tenta fazer parse do rawData
+          if (data.rawData && typeof data.rawData === 'object') {
+            players = data.rawData.players || [];
+          }
+        } catch (e) {
+          console.warn('Erro ao fazer parse dos jogadores:', e);
+          players = [];
+        }
+      } else if (Array.isArray(data.players)) {
+        players = data.players;
+      }
+      
+      // Extrair nomes dos jogadores
+      const memberNames = players.map(player => {
+        if (typeof player === 'object' && player !== null) {
+          return player.inGameName || player.username || player.name || 'Jogador';
+        }
+        return player || 'Jogador';
+      }).filter(name => name && name !== 'Jogador');
+      
+      // Determinar capitão (primeiro jogador ou jogador com role de captain)
+      let captain = '';
+      if (players.length > 0) {
+        const captainPlayer = players.find(p => p && p.isCaptain) || players[0];
+        if (captainPlayer && typeof captainPlayer === 'object') {
+          captain = captainPlayer.inGameName || captainPlayer.username || captainPlayer.name || '';
+        }
+      }
+      
+      // Avatar da equipe (priorizar logoUrl do rawData)
+      let avatar = '';
+      if (data.rawData) {
+        // Se rawData é string, tentar fazer parse
+        let rawDataParsed = data.rawData;
+        if (typeof data.rawData === 'string') {
+          try {
+            rawDataParsed = JSON.parse(data.rawData);
+          } catch {
+            rawDataParsed = {};
+          }
+        }
+        
+        // Priorizar rawData.persistentTeam.logoUrl (estrutura real do Battlefy)
+        if (rawDataParsed.persistentTeam && rawDataParsed.persistentTeam.logoUrl) {
+          avatar = rawDataParsed.persistentTeam.logoUrl;
+        } else {
+          // Fallback para outras possíveis estruturas
+          avatar = rawDataParsed.logoUrl || rawDataParsed.logo || rawDataParsed.avatar || '';
+        }
+      }
+      
+      return {
+        id: doc.id,
+        battlefyId: data.battlefyId,
+        name: data.name || 'Equipe sem nome',
+        tag: data.name ? data.name.substring(0, 4).toUpperCase() : 'TEAM',
+        game: 'League of Legends', // Assumindo LoL por padrão
+        region: 'BR', // Assumindo BR por padrão
+        description: `Equipe importada do Battlefy - Torneio: ${data.tournamentId}`,
+        members: memberNames,
+        captain: captain,
+        contactEmail: '',
+        discordServer: '',
+        avatar: avatar,
+        isActive: true,
+        source: 'battlefy',
+        tournamentId: data.tournamentId,
+        importedAt: data.importedAt,
+        updatedAt: data.updatedAt,
+        createdAt: data.importedAt
+      };
+    });
+  }, []);
+  
+  // Combinar equipes sem duplicação
+  const combineTeams = useCallback((seedTeams, battlefyTeams) => {
+    const combined = [...seedTeams];
+    const existingNames = new Set(seedTeams.map(team => team.name.toLowerCase()));
+    
+    // Agrupar equipes Battlefy por nome para pegar a mais recente
+    const battlefyByName = new Map();
+    battlefyTeams.forEach(team => {
+      const nameKey = team.name.toLowerCase();
+      const existing = battlefyByName.get(nameKey);
+      
+      if (!existing || new Date(team.updatedAt) > new Date(existing.updatedAt)) {
+        battlefyByName.set(nameKey, team);
+      }
+    });
+    
+    // Adicionar equipes Battlefy que não existem nas seed
+    battlefyByName.forEach(team => {
+      if (!existingNames.has(team.name.toLowerCase())) {
+        combined.push(team);
+      }
+    });
+    
+    return combined;
+  }, []);
 
   // Carrega todos os times
   const loadTeams = useCallback(async (filters = {}) => {
@@ -50,15 +160,26 @@ export const useFirebaseTeams = () => {
         return;
       }
       
-      const teamsData = await firebaseTeamService.getAllTeams();
-      setTeams(teamsData);
+      // Carregar equipes seed
+      const seedTeams = await firebaseTeamService.getAllTeams();
+      
+      // Carregar equipes Battlefy
+      const battlefyTeamsRef = collection(firestore, 'battlefy_teams');
+      const battlefyQuery = query(battlefyTeamsRef, orderBy('updatedAt', 'desc'));
+      const battlefySnapshot = await getDocs(battlefyQuery);
+      const battlefyTeams = mapBattlefyTeams(battlefySnapshot.docs);
+      
+      // Combinar equipes sem duplicação
+      const combinedTeams = combineTeams(seedTeams, battlefyTeams);
+      
+      setTeams(combinedTeams);
     } catch (err) {
       setError(err.message);
       console.error('Erro ao carregar times:', err);
     } finally {
       setLoading(false);
     }
-  }, [isConfigured, firestore]);
+  }, [isConfigured, firestore, mapBattlefyTeams, combineTeams]);
 
   // Adiciona um novo time
   const addTeam = useCallback(async (teamData) => {
@@ -179,13 +300,28 @@ export const useFirebaseTeams = () => {
       return;
     }
 
-    const unsubscribe = firebaseTeamService.onTeamsChange((teamsData) => {
-      setTeams(teamsData);
-      setLoading(false);
+    const unsubscribeSeed = firebaseTeamService.onTeamsChange(async (seedTeams) => {
+      try {
+        // Carregar equipes Battlefy
+        const battlefyTeamsRef = collection(firestore, 'battlefy_teams');
+        const battlefyQuery = query(battlefyTeamsRef, orderBy('updatedAt', 'desc'));
+        const battlefySnapshot = await getDocs(battlefyQuery);
+        const battlefyTeams = mapBattlefyTeams(battlefySnapshot.docs);
+        
+        // Combinar equipes sem duplicação
+        const combinedTeams = combineTeams(seedTeams, battlefyTeams);
+        
+        setTeams(combinedTeams);
+        setLoading(false);
+      } catch (err) {
+        console.error('Erro ao carregar equipes Battlefy em tempo real:', err);
+        setTeams(seedTeams); // Fallback para apenas equipes seed
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
-  }, [realTimeEnabled, isConfigured, firestore]);
+    return unsubscribeSeed;
+  }, [realTimeEnabled, isConfigured, firestore, mapBattlefyTeams, combineTeams]);
 
   // Carrega dados iniciais
   useEffect(() => {

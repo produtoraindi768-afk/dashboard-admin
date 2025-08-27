@@ -231,7 +231,9 @@ class FirebaseBattlefyService {
    */
   async getAllMatches(stageId) {
     try {
+      console.log(`🔍 Buscando partidas da API Battlefy para stage ${stageId}`);
       const matches = await this.makeApiRequest(`/stages/${stageId}/matches`);
+      console.log(`📊 API retornou ${matches.length} partidas básicas`);
       
       // Obter detalhes de cada partida
       const detailedMatches = [];
@@ -243,6 +245,16 @@ class FirebaseBattlefyService {
         if (matchId) {
           try {
             const detailedMatch = await this.makeApiRequest(`/matches/${matchId}`);
+            
+            // Log detalhado dos dados recebidos da API
+            console.log(`🔍 Match ${matchId} da API:`, {
+              state: detailedMatch.state,
+              hasResults: !!detailedMatch.results,
+              teams: detailedMatch.teams?.map(t => t.name || 'Unknown'),
+              round: detailedMatch.round,
+              matchNumber: detailedMatch.matchNumber
+            });
+            
             detailedMatches.push(detailedMatch);
           } catch (error) {
             console.warn(`Erro ao obter detalhes da partida ${matchId}:`, error);
@@ -253,11 +265,21 @@ class FirebaseBattlefyService {
         }
       }
       
+      // Resumo dos estados das partidas recebidas
+      const statesSummary = detailedMatches.reduce((acc, match) => {
+        const state = match.state || 'unknown';
+        acc[state] = (acc[state] || 0) + 1;
+        return acc;
+      }, {});
+      
+      console.log(`📈 Resumo dos estados das partidas da API:`, statesSummary);
+      
       return {
         success: true,
         data: detailedMatches
       };
     } catch (error) {
+      console.error(`❌ Erro ao obter partidas da API:`, error);
       return {
         success: false,
         error: 'Erro ao obter partidas'
@@ -307,8 +329,8 @@ class FirebaseBattlefyService {
         existingMatches.add(`${data.battlefyId}_${data.round}_${data.matchNumber}`);
       });
       
-      // Adiciona resultados de seed às partidas
-      const matchesWithResults = await this.addSeedMatchResults(matches);
+      // Adiciona resultados de seed às partidas de forma inteligente
+      const matchesWithResults = await this.addSeedMatchResults(matches, tournamentId, stageId);
       
       let newMatchesCount = 0;
       let updatedMatchesCount = 0;
@@ -339,7 +361,7 @@ class FirebaseBattlefyService {
         };
         
         if (existingMatches.has(matchKey)) {
-          // Atualizar partida existente
+          // Verificar se a partida existente precisa ser atualizada
           const existingQuery = query(
             matchesCollection,
             where('battlefyId', '==', match._id || ''),
@@ -349,9 +371,54 @@ class FirebaseBattlefyService {
           
           const existingDocs = await getDocs(existingQuery);
           if (!existingDocs.empty) {
-            const docRef = existingDocs.docs[0].ref;
-            batch.update(docRef, matchData);
-            updatedMatchesCount++;
+            const existingDoc = existingDocs.docs[0];
+            const existingData = existingDoc.data();
+            
+            // Verificar se há mudanças significativas
+            const stateChanged = existingData.state !== matchData.state;
+            const timeChanged = existingData.scheduledTime !== matchData.scheduledTime;
+            const teamsChanged = JSON.stringify(existingData.teams || []) !== JSON.stringify(matchData.teams || []);
+            
+            // Comparação especial para resultados - priorizar dados reais do Battlefy
+            let resultsChanged = false;
+            if (matchData.results && !existingData.results) {
+              resultsChanged = true; // Novos resultados do Battlefy
+            } else if (matchData.results && existingData.results) {
+              // Se existem resultados de seed e chegaram dados reais do Battlefy
+              if (existingData.results.seedGenerated && !matchData.results.seedGenerated) {
+                resultsChanged = true;
+              } else {
+                // Comparação normal de resultados
+                resultsChanged = JSON.stringify(existingData.results) !== JSON.stringify(matchData.results);
+              }
+            }
+            
+            const rawDataChanged = JSON.stringify(existingData.rawData || {}) !== JSON.stringify(matchData.rawData || {});
+            
+            const hasChanges = stateChanged || timeChanged || teamsChanged || resultsChanged || rawDataChanged;
+            
+            if (hasChanges) {
+              const docRef = existingDoc.ref;
+              batch.update(docRef, matchData);
+              updatedMatchesCount++;
+              
+              // Log detalhado das mudanças
+              const changes = [];
+              if (stateChanged) changes.push(`state: ${existingData.state} → ${matchData.state}`);
+              if (timeChanged) changes.push(`scheduledTime: ${existingData.scheduledTime} → ${matchData.scheduledTime}`);
+              if (teamsChanged) changes.push('teams');
+              if (resultsChanged) {
+                const oldResults = existingData.results?.seedGenerated ? 'seed' : (existingData.results ? 'real' : 'none');
+                const newResults = matchData.results?.seedGenerated ? 'seed' : (matchData.results ? 'real' : 'none');
+                changes.push(`results: ${oldResults} → ${newResults}`);
+              }
+              if (rawDataChanged) changes.push('rawData');
+              
+              console.log(`🔄 Atualizando match ${match._id}: ${changes.join(', ')}`);
+            } else {
+              console.log(`✅ Match ${match._id} sem mudanças - dados preservados`);
+            }
+            // Se não há mudanças, não faz nada (não conta como atualizada)
           }
         } else {
           // Criar nova partida
@@ -359,6 +426,10 @@ class FirebaseBattlefyService {
           const docRef = doc(matchesCollection);
           batch.set(docRef, matchData);
           newMatchesCount++;
+          
+          // Log para novas partidas
+          const seedInfo = matchData.results?.seedGenerated ? ' (com seed)' : '';
+          console.log(`➕ Nova match ${match._id}: state=${matchData.state}${seedInfo}`);
         }
       }
       
@@ -385,37 +456,94 @@ class FirebaseBattlefyService {
   }
 
   /**
-   * Adiciona dados de seed com resultados das partidas
+   * Adiciona dados de seed com resultados das partidas de forma inteligente
+   * Verifica dados existentes no Firebase antes de aplicar mudanças
    */
-  async addSeedMatchResults(matches) {
-     return matches.map((match, index) => {
-       // Para demonstração, força algumas partidas a terem estado 'complete' e resultados
-       if (index < Math.min(5, matches.length)) {
-         match.state = 'complete';
-       }
-       
-       // Adiciona resultados simulados se não existirem e a partida estiver completa
-       if (!match.results && match.state === 'complete') {
-         const team1Score = Math.floor(Math.random() * 3) + 1;
-         const team2Score = Math.floor(Math.random() * 3) + 1;
-         
-         match.results = {
-           team1: {
-             score: team1Score,
-             winner: team1Score > team2Score
-           },
-           team2: {
-             score: team2Score,
-             winner: team2Score > team1Score
-           },
-           finalScore: `${team1Score}-${team2Score}`,
-           duration: Math.floor(Math.random() * 45) + 15 + ' min'
-         };
-       }
-       
-       return match;
-     });
-   }
+  async addSeedMatchResults(matches, tournamentId, stageId) {
+    try {
+      // Buscar partidas existentes no Firebase para comparação
+      const matchesCollection = collection(db, BATTLEFY_MATCHES_COLLECTION);
+      const existingMatchesQuery = query(
+        matchesCollection,
+        where('tournamentId', '==', tournamentId),
+        where('stageId', '==', stageId)
+      );
+      
+      const existingSnapshot = await getDocs(existingMatchesQuery);
+      const existingMatchesMap = new Map();
+      
+      existingSnapshot.forEach((doc) => {
+        const data = doc.data();
+        existingMatchesMap.set(data.battlefyId, data);
+      });
+      
+      return matches.map((match, index) => {
+        const existingMatch = existingMatchesMap.get(match._id);
+        
+        // Se a partida já existe no Firebase, verificar se deve preservar ou atualizar
+        if (existingMatch) {
+          // Só preservar dados de seed (gerados artificialmente)
+          // Permitir que dados reais do Battlefy sempre sobrescrevam
+          const shouldPreserveState = existingMatch.results?.seedGenerated && !match.state;
+          const shouldPreserveResults = existingMatch.results?.seedGenerated && !match.results;
+          
+          if (shouldPreserveState) {
+            match.state = existingMatch.state;
+            console.log(`🔄 Preservando estado de seed para match ${match._id}: ${existingMatch.state}`);
+          }
+          
+          if (shouldPreserveResults) {
+            match.results = existingMatch.results;
+            console.log(`🔄 Preservando resultados de seed para match ${match._id}`);
+          }
+          
+          // Se dados do Battlefy estão disponíveis, eles têm prioridade
+          if (match.state && match.state !== existingMatch.state) {
+            console.log(`🆕 Atualizando estado do Battlefy para match ${match._id}: ${existingMatch.state} → ${match.state}`);
+          }
+          
+          if (match.results && JSON.stringify(match.results) !== JSON.stringify(existingMatch.results)) {
+            console.log(`🆕 Atualizando resultados do Battlefy para match ${match._id}`);
+          }
+        } else {
+          // Para novas partidas, aplicar lógica de seed apenas se necessário
+          // Para demonstração, força algumas partidas a terem estado 'complete' e resultados
+          if (index < Math.min(5, matches.length) && (!match.state || match.state === 'pending')) {
+            match.state = 'complete';
+            console.log(`🌱 Aplicando seed: match ${match._id} definido como 'complete'`);
+          }
+          
+          // Adiciona resultados simulados se não existirem e a partida estiver completa
+          if (!match.results && match.state === 'complete') {
+            const team1Score = Math.floor(Math.random() * 3) + 1;
+            const team2Score = Math.floor(Math.random() * 3) + 1;
+            
+            match.results = {
+              team1: {
+                score: team1Score,
+                winner: team1Score > team2Score
+              },
+              team2: {
+                score: team2Score,
+                winner: team2Score > team1Score
+              },
+              finalScore: `${team1Score}-${team2Score}`,
+              duration: Math.floor(Math.random() * 45) + 15 + ' min',
+              seedGenerated: true // Marca que foi gerado por seed
+            };
+            
+            console.log(`🌱 Aplicando seed: resultados gerados para match ${match._id} - ${match.results.finalScore}`);
+          }
+        }
+        
+        return match;
+      });
+    } catch (error) {
+      console.error('Erro ao processar dados de seed:', error);
+      // Em caso de erro, retorna as partidas sem modificação
+      return matches;
+    }
+  }
 
   /**
    * Salva dados dos times no Firebase (evita duplicatas)
@@ -453,7 +581,7 @@ class FirebaseBattlefyService {
         };
         
         if (existingTeams.has(team._id || '')) {
-          // Atualizar time existente
+          // Verificar se o time existente precisa ser atualizado
           const existingQuery = query(
             teamsCollection,
             where('battlefyId', '==', team._id || ''),
@@ -462,9 +590,22 @@ class FirebaseBattlefyService {
           
           const existingDocs = await getDocs(existingQuery);
           if (!existingDocs.empty) {
-            const docRef = existingDocs.docs[0].ref;
-            batch.update(docRef, teamData);
-            updatedTeamsCount++;
+            const existingDoc = existingDocs.docs[0];
+            const existingData = existingDoc.data();
+            
+            // Verificar se há mudanças significativas
+            const hasChanges = (
+              existingData.name !== teamData.name ||
+              JSON.stringify(existingData.players) !== JSON.stringify(teamData.players) ||
+              JSON.stringify(existingData.rawData) !== JSON.stringify(teamData.rawData)
+            );
+            
+            if (hasChanges) {
+              const docRef = existingDoc.ref;
+              batch.update(docRef, teamData);
+              updatedTeamsCount++;
+            }
+            // Se não há mudanças, não faz nada (não conta como atualizado)
           }
         } else {
           // Criar novo time
@@ -518,15 +659,35 @@ class FirebaseBattlefyService {
       const existingSnapshot = await getDocs(existingTournamentQuery);
       
       if (!existingSnapshot.empty) {
-        // Atualizar torneio existente
-        const docRef = existingSnapshot.docs[0].ref;
-        await updateDoc(docRef, tournamentData);
+        // Comparar dados existentes com novos dados
+        const existingDoc = existingSnapshot.docs[0];
+        const existingData = existingDoc.data();
         
-        return {
-          success: true,
-          data: { id: docRef.id, ...tournamentData },
-          action: 'updated'
-        };
+        // Verificar se há mudanças significativas
+        const hasChanges = (
+          existingData.name !== tournamentData.name ||
+          existingData.game !== tournamentData.game ||
+          JSON.stringify(existingData.rawData) !== JSON.stringify(tournamentData.rawData)
+        );
+        
+        if (hasChanges) {
+          // Atualizar torneio existente apenas se houver mudanças
+          const docRef = existingDoc.ref;
+          await updateDoc(docRef, tournamentData);
+          
+          return {
+            success: true,
+            data: { id: docRef.id, ...tournamentData },
+            action: 'updated'
+          };
+        } else {
+          // Nenhuma mudança detectada
+          return {
+            success: true,
+            data: { id: existingDoc.id, ...existingData },
+            action: 'no_changes'
+          };
+        }
       } else {
         // Criar novo torneio
         tournamentData.importedAt = serverTimestamp();
@@ -543,6 +704,99 @@ class FirebaseBattlefyService {
       return {
         success: false,
         error: 'Erro ao salvar torneio no Firebase'
+      };
+    }
+  }
+
+  /**
+   * Atualiza dados de um torneio existente sem duplicar
+   */
+  async updateTournamentData(tournamentId, stageId, progressCallback = null) {
+    try {
+      const results = {
+        tournament: null,
+        matches: null,
+        teams: null,
+        errors: [],
+        updated: true
+      };
+
+      // Verificar se o torneio existe na configuração com o mesmo tournamentId e stageId
+      const configQuery = query(
+        collection(db, BATTLEFY_CONFIG_COLLECTION),
+        where('tournamentId', '==', tournamentId),
+        where('stageId', '==', stageId)
+      );
+      const configSnapshot = await getDocs(configQuery);
+      
+      if (configSnapshot.empty) {
+        return {
+          success: false,
+          error: 'Torneio com este Tournament ID e Stage ID não encontrado nas configurações. Verifique os IDs ou importe o torneio primeiro.',
+          results
+        };
+      }
+      
+      console.log(`🔄 Iniciando atualização do torneio ${tournamentId} com stage ${stageId}`);
+
+      // 1. Atualizar informações do torneio
+      if (progressCallback) progressCallback('Atualizando informações do torneio...');
+      console.log(`📊 Buscando informações do torneio ${tournamentId}...`);
+      const tournamentResult = await this.getTournamentInfo(tournamentId);
+      
+      if (tournamentResult.success) {
+        console.log(`💾 Salvando informações do torneio...`);
+        const saveResult = await this.saveTournamentToFirebase(tournamentResult.data, tournamentId);
+        results.tournament = saveResult;
+        console.log(`✅ Torneio: ${saveResult.action === 'updated' ? 'Atualizado' : saveResult.action === 'no_changes' ? 'Sem mudanças' : 'Criado'}`);
+      } else {
+        console.error(`❌ Erro ao obter informações do torneio`);
+        results.errors.push('Erro ao obter informações do torneio');
+      }
+
+      // 2. Atualizar partidas
+      if (progressCallback) progressCallback('Atualizando partidas...');
+      console.log(`🎮 Buscando partidas do stage ${stageId}...`);
+      const matchesResult = await this.getAllMatches(stageId);
+      
+      if (matchesResult.success) {
+        console.log(`💾 Salvando ${matchesResult.data.length} partidas...`);
+        const saveResult = await this.saveMatchesToFirebase(matchesResult.data, tournamentId, stageId);
+        results.matches = saveResult;
+        console.log(`✅ Partidas: ${saveResult.stats.new} novas, ${saveResult.stats.updated} atualizadas, ${saveResult.stats.skippedUnknown || 0} puladas`);
+      } else {
+        console.error(`❌ Erro ao obter partidas`);
+        results.errors.push('Erro ao obter partidas');
+      }
+
+      // 3. Atualizar times
+      if (progressCallback) progressCallback('Atualizando times...');
+      console.log(`👥 Buscando times do torneio ${tournamentId}...`);
+      const teamsResult = await this.getAllTeams(tournamentId);
+      
+      if (teamsResult.success) {
+        console.log(`💾 Salvando ${teamsResult.data.length} times...`);
+        const saveResult = await this.saveTeamsToFirebase(teamsResult.data, tournamentId);
+        results.teams = saveResult;
+        console.log(`✅ Times: ${saveResult.stats.new} novos, ${saveResult.stats.updated} atualizados`);
+      } else {
+        console.error(`❌ Erro ao obter times`);
+        results.errors.push('Erro ao obter times');
+      }
+
+      if (progressCallback) progressCallback('Atualização concluída!');
+      
+      return {
+        success: true,
+        results,
+        message: 'Torneio atualizado com sucesso!'
+      };
+    } catch (error) {
+      console.error('Erro na atualização do torneio:', error);
+      return {
+        success: false,
+        error: 'Erro ao atualizar dados do torneio',
+        results: { errors: [error.message] }
       };
     }
   }
@@ -772,6 +1026,11 @@ export const battlefyAPI = {
   // Importação
   importData: async (tournamentId, stageId, progressCallback) => {
     return await firebaseBattlefyService.importTournamentData(tournamentId, stageId, progressCallback);
+  },
+  
+  // Atualização
+  updateTournament: async (tournamentId, stageId, progressCallback) => {
+    return await firebaseBattlefyService.updateTournamentData(tournamentId, stageId, progressCallback);
   },
   
   // Consulta de dados
