@@ -31,7 +31,7 @@ import {
 import { useFirebaseMatches } from '../hooks/useFirebaseMatches';
 import { useFirebaseTeams } from '../hooks/useFirebaseTeams';
 import { useFirebaseTournaments } from '../hooks/useFirebaseTournaments';
-import BattlefyMatchEditModal from '../components/BattlefyMatchEditModal';
+import BattlefyAdvancedEditModal from '../components/BattlefyAdvancedEditModal';
 import {
   formatRelativeTime,
   generateDefaultAvatar,
@@ -73,6 +73,10 @@ const MatchManagement = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Estados para paginação
+  const [displayedMatches, setDisplayedMatches] = useState(20); // Inicialmente mostra 20 partidas
+  const MATCHES_PER_PAGE = 20;
   
   // Estados para modal de edição do Battlefy
   const [isBattlefyEditModalOpen, setIsBattlefyEditModalOpen] = useState(false);
@@ -407,21 +411,32 @@ const MatchManagement = () => {
 
   // Funções específicas para partidas do Battlefy
   const handleEditBattlefyMatch = (match) => {
+    console.log('handleEditBattlefyMatch chamado com:', match);
     setSelectedBattlefyMatch(match);
     setIsBattlefyEditModalOpen(true);
   };
 
-  const handleSaveBattlefyMatch = async (updatedMatch) => {
+  const handleSaveBattlefyMatch = async (updatedMatchData) => {
     try {
-      await updateMatch(updatedMatch.id, {
-        scheduledDate: updatedMatch.scheduledDate,
-        status: updatedMatch.status,
-        result: updatedMatch.result
-      }, 'battlefy'); // Especificar que é uma partida do Battlefy
+      console.log('🔍 Debug handleSaveBattlefyMatch - updatedMatchData received:', updatedMatchData);
+      console.log('🔍 Debug handleSaveBattlefyMatch - updatedMatchData.id:', updatedMatchData.id);
+      
+      // Usar o novo método para atualização completa dos dados do Battlefy
+      const { getFirebaseMatchService } = await import('../services/firebaseMatchService');
+      const matchService = getFirebaseMatchService();
+      
+      console.log('🔍 Debug handleSaveBattlefyMatch - calling updateBattlefyMatchComplete with:', {
+        matchId: updatedMatchData.id,
+        completeMatchData: updatedMatchData
+      });
+      
+      await matchService.updateBattlefyMatchComplete(updatedMatchData.id, updatedMatchData);
       setSuccessMessage('Partida do Battlefy atualizada com sucesso!');
+      closeBattlefyEditModal();
     } catch (err) {
-      console.error('Erro ao atualizar partida do Battlefy:', err);
-      setError('Erro ao atualizar partida do Battlefy: ' + err.message);
+      console.error('❌ Erro ao atualizar partida completa do Battlefy:', err);
+      console.error('❌ Error details:', err.message, err.stack);
+      setFormError('Erro ao atualizar partida do Battlefy: ' + err.message);
     }
   };
 
@@ -504,7 +519,7 @@ const MatchManagement = () => {
   };
 
   const filteredMatches = useMemo(() => {
-    return matches.filter(match => {
+    const filtered = matches.filter(match => {
       const matchesSearch = 
         match.team1?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         match.team2?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -515,7 +530,25 @@ const MatchManagement = () => {
       
       return matchesSearch && matchesStatus;
     });
-  }, [matches, searchTerm, statusFilter]);
+    
+    // Resetar paginação quando filtros mudarem
+    setDisplayedMatches(MATCHES_PER_PAGE);
+    
+    return filtered;
+  }, [matches, searchTerm, statusFilter, MATCHES_PER_PAGE]);
+  
+  // Partidas que serão exibidas (com paginação)
+  const displayedMatchesList = useMemo(() => {
+    return filteredMatches.slice(0, displayedMatches);
+  }, [filteredMatches, displayedMatches]);
+  
+  // Função para carregar mais partidas
+  const loadMoreMatches = () => {
+    setDisplayedMatches(prev => prev + MATCHES_PER_PAGE);
+  };
+  
+  // Verificar se há mais partidas para carregar
+  const hasMoreMatches = displayedMatches < filteredMatches.length;
 
   if (loading) {
     return (
@@ -920,6 +953,11 @@ const MatchManagement = () => {
           <CardTitle>Partidas ({filteredMatches.length})</CardTitle>
           <CardDescription>
             Gerencie todas as partidas dos torneios
+            {displayedMatches < filteredMatches.length && (
+              <span className="text-sm text-muted-foreground ml-2">
+                • Exibindo {displayedMatches} de {filteredMatches.length}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -936,7 +974,7 @@ const MatchManagement = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredMatches.map((match) => (
+              {displayedMatchesList.map((match) => (
                 <div key={match.id} className="border rounded-lg p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -1104,6 +1142,20 @@ const MatchManagement = () => {
                   </div>
                 </div>
               ))}
+              
+              {/* Botão para carregar mais partidas */}
+              {hasMoreMatches && (
+                <div className="flex justify-center pt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={loadMoreMatches}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Carregar mais partidas ({filteredMatches.length - displayedMatches} restantes)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -1523,8 +1575,8 @@ const MatchManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Edição do Battlefy */}
-      <BattlefyMatchEditModal
+      {/* Modal de Edição Avançada do Battlefy */}
+      <BattlefyAdvancedEditModal
         match={selectedBattlefyMatch}
         isOpen={isBattlefyEditModalOpen}
         onClose={closeBattlefyEditModal}

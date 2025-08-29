@@ -115,6 +115,29 @@ class FirebaseBattlefyService {
   }
 
   /**
+   * Atualiza uma configuração de torneio existente
+   */
+  async updateTournamentConfig(configId, updateData) {
+    try {
+      console.log(`🔄 Atualizando configuração ${configId}...`);
+      
+      const configRef = doc(db, BATTLEFY_CONFIG_COLLECTION, configId);
+      const updatedData = {
+        ...updateData,
+        updatedAt: serverTimestamp()
+      };
+      
+      await updateDoc(configRef, updatedData);
+      
+      console.log(`✅ Configuração ${configId} atualizada com sucesso`);
+      return { success: true, data: updatedData };
+    } catch (error) {
+      console.error('❌ Erro ao atualizar configuração:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Deleta uma configuração salva e todos os dados importados relacionados
    */
   async deleteConfigWithData(configId) {
@@ -802,6 +825,49 @@ class FirebaseBattlefyService {
   }
 
   /**
+   * Importa apenas os dados básicos do torneio (sem partidas e times)
+   */
+  async importTournamentOnly(tournamentId, progressCallback = null) {
+    try {
+      const results = {
+        tournament: null,
+        errors: []
+      };
+
+      // 1. Obter informações do torneio
+      if (progressCallback) progressCallback('Obtendo informações do torneio...');
+      const tournamentResult = await this.getTournamentInfo(tournamentId);
+      
+      if (tournamentResult.success) {
+        const saveResult = await this.saveTournamentToFirebase(tournamentResult.data, tournamentId);
+        results.tournament = saveResult;
+      } else {
+        results.errors.push('Erro ao obter informações do torneio');
+      }
+
+      // 2. Salvar configuração básica (sem stageId)
+      if (progressCallback) progressCallback('Salvando configuração...');
+      await this.saveTournamentConfig(tournamentId, '', tournamentResult.data?.name || '');
+
+      if (progressCallback) progressCallback('Importação do torneio concluída!');
+      
+      return {
+        success: results.errors.length === 0,
+        results,
+        message: results.errors.length === 0 
+          ? 'Dados do torneio importados com sucesso!' 
+          : `Importação concluída com ${results.errors.length} erro(s)`
+      };
+    } catch (error) {
+      console.error('Erro na importação do torneio:', error);
+      return {
+        success: false,
+        error: 'Erro geral na importação de dados do torneio'
+      };
+    }
+  }
+
+  /**
    * Importa todos os dados do torneio (função principal)
    */
   async importTournamentData(tournamentId, stageId, progressCallback = null) {
@@ -1006,7 +1072,7 @@ export const firebaseBattlefyService = new FirebaseBattlefyService();
 
 // API simplificada para uso direto
 export const battlefyAPI = {
-  // Configuração
+  // Configurações
   saveConfig: async (tournamentId, stageId, tournamentName) => {
     return await firebaseBattlefyService.saveTournamentConfig(tournamentId, stageId, tournamentName);
   },
@@ -1023,9 +1089,17 @@ export const battlefyAPI = {
     return await firebaseBattlefyService.deleteConfigWithData(configId);
   },
   
+  updateConfig: async (configId, updateData) => {
+    return await firebaseBattlefyService.updateTournamentConfig(configId, updateData);
+  },
+  
   // Importação
   importData: async (tournamentId, stageId, progressCallback) => {
     return await firebaseBattlefyService.importTournamentData(tournamentId, stageId, progressCallback);
+  },
+  
+  importTournamentOnly: async (tournamentId, progressCallback) => {
+    return await firebaseBattlefyService.importTournamentOnly(tournamentId, progressCallback);
   },
   
   // Atualização

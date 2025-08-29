@@ -59,6 +59,20 @@ const TournamentDataImport = () => {
   const [tournamentUpdateStatus, setTournamentUpdateStatus] = useState('');
   const [tournamentUpdateResults, setTournamentUpdateResults] = useState(null);
   const [selectedConfigForUpdate, setSelectedConfigForUpdate] = useState(null);
+  
+  // Estados para importação apenas do torneio
+  const [isImportingTournamentOnly, setIsImportingTournamentOnly] = useState(false);
+  const [tournamentOnlyProgress, setTournamentOnlyProgress] = useState(0);
+  const [tournamentOnlyStatus, setTournamentOnlyStatus] = useState('');
+  const [tournamentOnlyResults, setTournamentOnlyResults] = useState(null);
+  
+  // Estados para adicionar Stage ID
+  const [isAddingStageId, setIsAddingStageId] = useState(false);
+  const [selectedConfigForStageId, setSelectedConfigForStageId] = useState(null);
+  const [newStageId, setNewStageId] = useState('');
+  const [stageIdProgress, setStageIdProgress] = useState(0);
+  const [stageIdStatus, setStageIdStatus] = useState('');
+  const [stageIdResults, setStageIdResults] = useState(null);
 
   // Carregar configurações salvas ao montar o componente
   useEffect(() => {
@@ -72,7 +86,13 @@ const TournamentDataImport = () => {
     try {
       const result = await battlefyAPI.getConfigs();
       if (result.success) {
-        setConfigs(result.data);
+        // Garantir ordenação por data de criação (mais recente primeiro)
+        const sortedConfigs = result.data.sort((a, b) => {
+          const dateA = new Date(a.createdAt);
+          const dateB = new Date(b.createdAt);
+          return dateB - dateA; // Ordem decrescente (mais recente primeiro)
+        });
+        setConfigs(sortedConfigs);
       }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
@@ -230,6 +250,49 @@ const TournamentDataImport = () => {
       setError('Erro ao importar dados');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  /**
+   * Inicia importação apenas dos dados do torneio
+   */
+  const startTournamentOnlyImport = async () => {
+    if (!tournamentId.trim()) {
+      setError('Tournament ID é obrigatório');
+      return;
+    }
+
+    setIsImportingTournamentOnly(true);
+    setTournamentOnlyProgress(0);
+    setTournamentOnlyStatus('Iniciando importação do torneio...');
+    setError('');
+    setTournamentOnlyResults(null);
+
+    try {
+      const result = await battlefyAPI.importTournamentOnly(
+        tournamentId,
+        (status) => {
+          setTournamentOnlyStatus(status);
+          setTournamentOnlyProgress(prev => Math.min(prev + 50, 90));
+        }
+      );
+      
+      setTournamentOnlyProgress(100);
+      setTournamentOnlyResults(result);
+      
+      if (result.success) {
+        setTournamentOnlyStatus('Importação do torneio concluída com sucesso!');
+        setSuccess('Dados do torneio importados com sucesso!');
+        await loadConfigs(); // Recarregar configurações para mostrar a nova
+      } else {
+        setTournamentOnlyStatus('Importação do torneio concluída com erros');
+        setError(result.error || 'Erro na importação do torneio');
+      }
+    } catch (error) {
+      setTournamentOnlyStatus('Erro na importação do torneio');
+      setError('Erro ao importar dados do torneio');
+    } finally {
+      setIsImportingTournamentOnly(false);
     }
   };
 
@@ -408,6 +471,88 @@ const TournamentDataImport = () => {
   };
 
   /**
+   * Adiciona Stage ID a um torneio que foi importado apenas com Tournament ID
+   */
+  const addStageIdToTournament = async (config, stageId) => {
+    if (!stageId.trim()) {
+      setError('Stage ID é obrigatório');
+      return;
+    }
+
+    setIsAddingStageId(true);
+    setSelectedConfigForStageId(config);
+    setStageIdProgress(0);
+    setStageIdStatus(`Adicionando Stage ID ao torneio "${config.tournamentName || 'Torneio sem nome'}"...`);
+    setError('');
+    setSuccess('');
+    setStageIdResults(null);
+
+    try {
+      setStageIdProgress(25);
+      setStageIdStatus('Atualizando configuração...');
+      
+      // Atualizar a configuração com o novo Stage ID
+      const result = await battlefyAPI.updateConfig(config.id, {
+        ...config,
+        stageId: stageId.trim()
+      });
+      
+      setStageIdProgress(50);
+      setStageIdStatus('Importando dados completos do torneio...');
+      
+      // Agora importar os dados completos (partidas e times)
+      const importResult = await battlefyAPI.importData(
+        config.tournamentId,
+        stageId.trim(),
+        (status) => {
+          setStageIdStatus(status);
+          setStageIdProgress(prev => Math.min(prev + 10, 90));
+        }
+      );
+      
+      setStageIdProgress(100);
+      setStageIdResults(importResult);
+      
+      if (importResult.success) {
+        setStageIdStatus(`Stage ID adicionado e dados importados com sucesso!`);
+        setSuccess(`Stage ID adicionado ao torneio "${config.tournamentName || 'sem nome'}" e dados importados!`);
+        await loadConfigs(); // Recarregar configurações
+        await loadData(); // Recarregar dados
+        setNewStageId(''); // Limpar campo
+      } else {
+        setStageIdStatus('Erro ao importar dados completos');
+        setError(importResult.error || 'Erro ao importar dados após adicionar Stage ID');
+      }
+    } catch (error) {
+      setStageIdStatus('Erro ao adicionar Stage ID');
+      setError(`Erro ao adicionar Stage ID: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsAddingStageId(false);
+      setSelectedConfigForStageId(null);
+    }
+  };
+
+  /**
+   * Inicia o processo de adicionar Stage ID
+   */
+  const startAddStageId = (config) => {
+    setSelectedConfigForStageId(config);
+    setNewStageId('');
+    setStageIdResults(null);
+    setError('');
+    setSuccess('');
+  };
+
+  /**
+   * Cancela o processo de adicionar Stage ID
+   */
+  const cancelAddStageId = () => {
+    setSelectedConfigForStageId(null);
+    setNewStageId('');
+    setStageIdResults(null);
+  };
+
+  /**
    * Debug da API Battlefy
    */
   const debugApi = async () => {
@@ -496,11 +641,11 @@ const TournamentDataImport = () => {
               />
             </div>
             
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <Button 
                 onClick={saveConfig} 
                 disabled={loading}
-                className="flex-1"
+                className="w-full"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -510,19 +655,35 @@ const TournamentDataImport = () => {
                 Salvar Config
               </Button>
               
-              <Button 
-                onClick={startImport} 
-                disabled={isImporting || !tournamentId || !stageId}
-                variant="default"
-                className="flex-1"
-              >
-                {isImporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Importar Dados
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={startTournamentOnlyImport} 
+                  disabled={isImportingTournamentOnly || !tournamentId}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {isImportingTournamentOnly ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trophy className="h-4 w-4" />
+                  )}
+                  Só Torneio
+                </Button>
+                
+                <Button 
+                  onClick={startImport} 
+                  disabled={isImporting || !tournamentId || !stageId}
+                  variant="default"
+                  className="flex-1"
+                >
+                  {isImporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Tudo
+                </Button>
+              </div>
             </div>
             
             {/* Informações da API */}
@@ -555,11 +716,22 @@ const TournamentDataImport = () => {
             {isImporting && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Progresso</span>
+                  <span>Progresso (Importação Completa)</span>
                   <span>{importProgress}%</span>
                 </div>
                 <Progress value={importProgress} className="w-full" />
                 <p className="text-sm text-muted-foreground">{importStatus}</p>
+              </div>
+            )}
+            
+            {isImportingTournamentOnly && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progresso (Apenas Torneio)</span>
+                  <span>{tournamentOnlyProgress}%</span>
+                </div>
+                <Progress value={tournamentOnlyProgress} className="w-full" />
+                <p className="text-sm text-muted-foreground">{tournamentOnlyStatus}</p>
               </div>
             )}
             
@@ -618,6 +790,30 @@ const TournamentDataImport = () => {
                   <div className="p-2 bg-destructive/10 rounded">
                     <p className="text-sm font-medium text-destructive mb-1">Erros:</p>
                     {importResults.results.errors.map((error, index) => (
+                      <p key={index} className="text-xs text-destructive">• {error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {tournamentOnlyResults && (
+              <div className="space-y-3">
+                <h4 className="font-medium">Resultados da Importação (Apenas Torneio):</h4>
+                
+                {tournamentOnlyResults.results.tournament && (
+                  <div className="flex items-center justify-between p-2 bg-muted rounded">
+                    <span className="text-sm">Torneio</span>
+                    <Badge variant={tournamentOnlyResults.results.tournament.success ? "default" : "destructive"}>
+                      {tournamentOnlyResults.results.tournament.success ? 'Sucesso' : 'Erro'}
+                    </Badge>
+                  </div>
+                )}
+                
+                {tournamentOnlyResults.results.errors.length > 0 && (
+                  <div className="p-2 bg-destructive/10 rounded">
+                    <p className="text-sm font-medium text-destructive mb-1">Erros:</p>
+                    {tournamentOnlyResults.results.errors.map((error, index) => (
                       <p key={index} className="text-xs text-destructive">• {error}</p>
                     ))}
                   </div>
@@ -834,8 +1030,14 @@ const TournamentDataImport = () => {
                     </h4>
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p>Tournament: {config.tournamentId.substring(0, 8)}...</p>
-                      <p>Stage: {config.stageId.substring(0, 8)}...</p>
+                      <p>Stage: {config.stageId ? config.stageId.substring(0, 8) + '...' : 'Não definido'}</p>
                       <p>Criado: {new Date(config.createdAt).toLocaleDateString()}</p>
+                      {!config.stageId && (
+                        <div className="flex items-center gap-1 text-amber-600">
+                          <AlertCircle className="h-3 w-3" />
+                          <span className="text-xs">Precisa de Stage ID</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button 
@@ -846,20 +1048,39 @@ const TournamentDataImport = () => {
                       >
                         Carregar
                       </Button>
-                      <Button 
-                        onClick={() => updateSpecificTournament(config)} 
-                        size="sm" 
-                        variant="default"
-                        disabled={isUpdatingTournament}
-                        className="px-2"
-                        title="Atualizar este torneio"
-                      >
-                        {isUpdatingTournament && selectedConfigForUpdate?.id === config.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3" />
-                        )}
-                      </Button>
+                      
+                      {config.stageId ? (
+                        <Button 
+                          onClick={() => updateSpecificTournament(config)} 
+                          size="sm" 
+                          variant="default"
+                          disabled={isUpdatingTournament}
+                          className="px-2"
+                          title="Atualizar este torneio"
+                        >
+                          {isUpdatingTournament && selectedConfigForUpdate?.id === config.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3" />
+                          )}
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={() => startAddStageId(config)} 
+                          size="sm" 
+                          variant="secondary"
+                          disabled={isAddingStageId}
+                          className="px-2"
+                          title="Adicionar Stage ID"
+                        >
+                          {isAddingStageId && selectedConfigForStageId?.id === config.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Settings className="h-3 w-3" />
+                          )}
+                        </Button>
+                      )}
+                      
                       <Button 
                         onClick={() => showDeleteOptions(config.id)} 
                         size="sm" 
@@ -903,6 +1124,156 @@ const TournamentDataImport = () => {
               <p><strong>Tournament ID:</strong> {selectedConfigForUpdate.tournamentId.substring(0, 12)}...</p>
               <p><strong>Stage ID:</strong> {selectedConfigForUpdate.stageId.substring(0, 12)}...</p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modal para Adicionar Stage ID */}
+      {selectedConfigForStageId && !isAddingStageId && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-amber-700">
+              <Settings className="h-4 w-4" />
+              Adicionar Stage ID
+            </CardTitle>
+            <CardDescription className="text-amber-600">
+              Adicione o Stage ID para "{selectedConfigForStageId.tournamentName || 'Torneio sem nome'}" e importe os dados completos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-xs text-muted-foreground space-y-1 p-2 bg-white/50 rounded">
+              <p><strong>Tournament ID:</strong> {selectedConfigForStageId.tournamentId.substring(0, 12)}...</p>
+              <p><strong>Status:</strong> Apenas dados básicos importados</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newStageId">Stage ID</Label>
+              <Input
+                id="newStageId"
+                value={newStageId}
+                onChange={(e) => setNewStageId(e.target.value)}
+                placeholder="Cole o Stage ID aqui..."
+                className="font-mono text-sm"
+              />
+            </div>
+            
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="h-4 w-4" />
+                <span className="text-sm font-medium">O que acontecerá:</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                • O Stage ID será adicionado à configuração<br/>
+                • Os dados completos (partidas e times) serão importados<br/>
+                • O torneio ficará pronto para atualizações futuras
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => addStageIdToTournament(selectedConfigForStageId, newStageId)}
+                disabled={!newStageId.trim()}
+                className="flex-1"
+              >
+                <Download className="h-4 w-4" />
+                Adicionar e Importar
+              </Button>
+              <Button 
+                onClick={cancelAddStageId}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status da Adição de Stage ID */}
+      {selectedConfigForStageId && isAddingStageId && (
+        <Card className="border-green-200 bg-green-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-green-700">
+              <Settings className="h-4 w-4 animate-spin" />
+              Adicionando Stage ID
+            </CardTitle>
+            <CardDescription className="text-green-600">
+              Processando "{selectedConfigForStageId.tournamentName || 'Torneio sem nome'}"
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progresso</span>
+                <span>{stageIdProgress}%</span>
+              </div>
+              <Progress value={stageIdProgress} className="w-full" />
+              <p className="text-sm text-muted-foreground">{stageIdStatus}</p>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1 p-2 bg-white/50 rounded">
+              <p><strong>Tournament ID:</strong> {selectedConfigForStageId.tournamentId.substring(0, 12)}...</p>
+              <p><strong>Novo Stage ID:</strong> {newStageId.substring(0, 12)}...</p>
+            </div>
+            
+            {stageIdResults && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Resultados:</h4>
+                
+                {stageIdResults.results.tournament && (
+                  <div className="flex items-center justify-between p-2 bg-white/50 rounded">
+                    <span className="text-sm">Torneio</span>
+                    <Badge variant={stageIdResults.results.tournament.success ? "default" : "destructive"}>
+                      {stageIdResults.results.tournament.success ? 'Sucesso' : 'Erro'}
+                    </Badge>
+                  </div>
+                )}
+                
+                {stageIdResults.results.matches && (
+                  <div className="p-2 bg-white/50 rounded space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Partidas</span>
+                      <Badge variant={stageIdResults.results.matches.success ? "default" : "destructive"}>
+                        {stageIdResults.results.matches.success ? 'Sucesso' : 'Erro'}
+                      </Badge>
+                    </div>
+                    {stageIdResults.results.matches.stats && (
+                      <div className="text-xs text-muted-foreground">
+                        Total: {stageIdResults.results.matches.stats.total} | 
+                        Novas: {stageIdResults.results.matches.stats.new}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {stageIdResults.results.teams && (
+                  <div className="p-2 bg-white/50 rounded space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Times</span>
+                      <Badge variant={stageIdResults.results.teams.success ? "default" : "destructive"}>
+                        {stageIdResults.results.teams.success ? 'Sucesso' : 'Erro'}
+                      </Badge>
+                    </div>
+                    {stageIdResults.results.teams.stats && (
+                      <div className="text-xs text-muted-foreground">
+                        Total: {stageIdResults.results.teams.stats.total} | 
+                        Novos: {stageIdResults.results.teams.stats.new}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {stageIdResults.results.errors && stageIdResults.results.errors.length > 0 && (
+                  <div className="p-2 bg-destructive/10 rounded">
+                    <p className="text-sm font-medium text-destructive mb-1">Erros:</p>
+                    {stageIdResults.results.errors.map((error, index) => (
+                      <p key={index} className="text-xs text-destructive">• {error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

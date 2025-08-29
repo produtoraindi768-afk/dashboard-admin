@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,10 @@ const TeamRegistration = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGame, setFilterGame] = useState('');
   const [filterRegion, setFilterRegion] = useState('');
+  
+  // Estados para paginação
+  const [displayedTeams, setDisplayedTeams] = useState(20); // Inicialmente mostra 20 equipes
+  const TEAMS_PER_PAGE = 20;
 
   // Ativar tempo real quando o componente monta
   useEffect(() => {
@@ -63,14 +67,34 @@ const TeamRegistration = () => {
     }
   }, [successMessage]);
 
-  // Filtrar equipes
-  const filteredTeams = teams.filter(team => {
-    const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         team.tag.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGame = !filterGame || filterGame === 'all' || team.game === filterGame;
-    const matchesRegion = !filterRegion || filterRegion === 'all' || team.region === filterRegion;
-    return matchesSearch && matchesGame && matchesRegion;
-  });
+  // Filtrar equipes com paginação
+  const filteredTeams = useMemo(() => {
+    const filtered = teams.filter(team => {
+      const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           team.tag.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesGame = !filterGame || filterGame === 'all' || team.game === filterGame;
+      const matchesRegion = !filterRegion || filterRegion === 'all' || team.region === filterRegion;
+      return matchesSearch && matchesGame && matchesRegion;
+    });
+    
+    // Resetar paginação quando filtros mudarem
+    setDisplayedTeams(TEAMS_PER_PAGE);
+    
+    return filtered;
+  }, [teams, searchTerm, filterGame, filterRegion, TEAMS_PER_PAGE]);
+  
+  // Equipes que serão exibidas (com paginação)
+  const displayedTeamsList = useMemo(() => {
+    return filteredTeams.slice(0, displayedTeams);
+  }, [filteredTeams, displayedTeams]);
+  
+  // Função para carregar mais equipes
+  const loadMoreTeams = () => {
+    setDisplayedTeams(prev => prev + TEAMS_PER_PAGE);
+  };
+  
+  // Verificar se há mais equipes para carregar
+  const hasMoreTeams = displayedTeams < filteredTeams.length;
 
   // Manipular mudanças no formulário
   const handleInputChange = (field, value) => {
@@ -463,6 +487,11 @@ const TeamRegistration = () => {
             <Users className="h-5 w-5" />
             Equipes Cadastradas ({filteredTeams.length})
           </CardTitle>
+          {displayedTeams < filteredTeams.length && (
+            <CardDescription>
+              • Exibindo {displayedTeams} de {filteredTeams.length}
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           {filteredTeams.length === 0 ? (
@@ -482,7 +511,7 @@ const TeamRegistration = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredTeams.map((team) => {
+              {displayedTeamsList.map((team) => {
                 const defaultAvatar = generateDefaultAvatar(team.name);
                 
                 return (
@@ -549,6 +578,20 @@ const TeamRegistration = () => {
                 </div>
                 );
               })}
+              
+              {/* Botão para carregar mais equipes */}
+              {hasMoreTeams && (
+                <div className="flex justify-center pt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={loadMoreTeams}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Exibir mais equipes ({filteredTeams.length - displayedTeams} restantes)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

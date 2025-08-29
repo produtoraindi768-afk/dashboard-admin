@@ -300,6 +300,7 @@ export const useFirebaseMatches = () => {
         })(),
         isBye,
         matchType: rawDataParsed.matchType || topTeam.matchType || bottomTeam.matchType,
+        rawData: rawDataParsed, // Incluir rawData para o modal de edição avançada
       };
     });
   }, [mapStatus]);

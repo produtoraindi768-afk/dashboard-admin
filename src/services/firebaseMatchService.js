@@ -262,6 +262,56 @@ class FirebaseMatchService {
     }
   }
 
+  // Atualizar partida do Battlefy com dados completos (rawData)
+  async updateBattlefyMatchComplete(matchId, completeMatchData) {
+    try {
+      const docRef = doc(this.firestore, 'battlefy_matches', matchId);
+      
+      // Função para filtrar valores undefined
+      const filterUndefined = (obj) => {
+        const filtered = {};
+        Object.keys(obj).forEach(key => {
+          if (obj[key] !== undefined) {
+            filtered[key] = obj[key];
+          }
+        });
+        return filtered;
+      };
+      
+      // Preparar dados para atualização
+      const updateData = {
+        // Atualizar campos principais baseados no rawData
+        battlefyId: completeMatchData.rawData._id || completeMatchData.battlefyId,
+        tournamentId: completeMatchData.rawData.tournamentId || completeMatchData.tournamentId,
+        stageId: completeMatchData.rawData.stageId || completeMatchData.stageId,
+        round: completeMatchData.rawData.round || completeMatchData.round || 0,
+        matchNumber: completeMatchData.rawData.matchNumber || completeMatchData.matchNumber || 0,
+        state: completeMatchData.rawData.state || completeMatchData.state || 'pending',
+        scheduledTime: completeMatchData.rawData.scheduledTime || completeMatchData.scheduledTime || null,
+        
+        // Atualizar rawData completo
+        rawData: {
+          ...completeMatchData.rawData,
+          updatedAt: new Date().toISOString()
+        },
+        
+        // Timestamp do Firebase
+        updatedAt: serverTimestamp()
+      };
+      
+      // Filtrar campos undefined antes de enviar para o Firebase
+      const filteredUpdateData = filterUndefined(updateData);
+      
+      console.log('🔍 Debug updateBattlefyMatchComplete - filteredUpdateData:', filteredUpdateData);
+      
+      await updateDoc(docRef, filteredUpdateData);
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar partida completa do Battlefy:', error);
+      throw error;
+    }
+  }
+
   // Deletar partida do Battlefy
   async deleteBattlefyMatch(matchId) {
     try {
