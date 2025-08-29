@@ -76,6 +76,11 @@ export const validateStreamerData = (data) => {
     errors.category = 'Categoria é obrigatória';
   }
   
+  // Bio é opcional, mas se fornecida deve ter no máximo 80 caracteres
+  if (data.bio && data.bio.trim().length > 80) {
+    errors.bio = 'Bio deve ter no máximo 80 caracteres';
+  }
+  
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -89,7 +94,8 @@ export const sanitizeStreamerData = (data) => {
     platform: data.platform?.trim() || '',
     streamUrl: data.streamUrl?.trim() || '',
     avatarUrl: data.avatarUrl?.trim() || '',
-    category: data.category?.trim() || ''
+    category: data.category?.trim() || '',
+    bio: data.bio?.trim() || ''
   };
 };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +42,8 @@ const StreamerRegistration = () => {
     platform: '',
     streamUrl: '',
     avatarUrl: '',
-    category: ''
+    category: '',
+    bio: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +99,8 @@ const StreamerRegistration = () => {
         platform: '',
         streamUrl: '',
         avatarUrl: '',
-        category: ''
+        category: '',
+        bio: ''
       });
       setShowForm(false);
     } catch (err) {
@@ -114,7 +117,8 @@ const StreamerRegistration = () => {
       platform: streamer.platform,
       streamUrl: streamer.streamUrl,
       avatarUrl: streamer.avatarUrl || '',
-      category: streamer.category
+      category: streamer.category,
+      bio: streamer.bio || ''
     });
     setEditingId(streamer.id);
     setFormErrors({});
@@ -272,6 +276,35 @@ const StreamerRegistration = () => {
                 </Select>
                 {formErrors.category && (
                   <p className="text-sm text-red-600">{formErrors.category}</p>
+                )}
+              </div>
+
+              {/* Bio */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="bio">Bio (opcional)</Label>
+                <div className="space-y-1">
+                  <Textarea
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => handleInputChange('bio', e.target.value)}
+                    placeholder="Descreva brevemente o streamer..."
+                    className={`resize-none ${formErrors.bio ? 'border-red-500' : ''}`}
+                    rows={3}
+                    maxLength={80}
+                  />
+                  <div className="flex justify-between items-center">
+                    <div className="text-xs text-muted-foreground">
+                      {formData.bio.length}/80 caracteres
+                    </div>
+                    {formData.bio.length > 70 && (
+                      <div className="text-xs text-amber-600">
+                        {80 - formData.bio.length} caracteres restantes
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {formErrors.bio && (
+                  <p className="text-sm text-red-600">{formErrors.bio}</p>
                 )}
               </div>
 
